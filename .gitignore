@@ -1,0 +1,6 @@
+*.pyc
+/tmp
+/.cache
+/graphite_local_settings.py
+/test.py
+/bench.py
