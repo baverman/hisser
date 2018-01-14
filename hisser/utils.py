@@ -18,6 +18,10 @@ mdumps = partial(msgpack.dumps, use_bin_type=True)
 mloads = partial(msgpack.loads, encoding='utf-8')
 
 
+def norm_res(ts, res):
+    return int(ts) // res * res
+
+
 def estimate_data_size(data, size):
     return (1000 * len(data) + size * 8 * len(data))
 

@@ -10,10 +10,60 @@ from collections import namedtuple
 import lmdb
 
 from .utils import (estimate_data_size, mdumps, mloads, NAN, overlap, safe_unlink,
-                    MB, page_size, map_size_for_path)
+                    MB, page_size, map_size_for_path, norm_res)
 
 
 BlockInfo = namedtuple('BlockInfo', 'start end resolution size path')
+
+
+class BlockSlice(namedtuple('BlockSlice', 'block start end idx size')):
+    @staticmethod
+    def make(block):
+        return BlockSlice(block, block.start, block.end, 0, block.size)
+
+    def split(self, ts):
+        if ts <= self.start:
+            return None, self
+        elif ts >= self.end:
+            return self, None
+
+        return self.slice_to(ts), self.slice_from(ts)
+
+    def slice(self, start, stop=None):
+        result = self
+        if start is not None:
+            result = result.slice_from(start)
+        if stop is not None:
+            result = result and result.slice_to(stop)
+        return result
+
+    def slice_from(self, ts):
+        if ts <= self.start:
+            return self
+
+        if ts >= self.end:
+            return None
+
+        b = self.block
+        start = ts
+        end = self.end
+        return BlockSlice(b, start, end,
+                          (start - b.start) // b.resolution,
+                          (end - start) // b.resolution)
+
+    def slice_to(self, ts):
+        if ts <= self.start:
+            return None
+
+        if ts >= self.end:
+            return self
+
+        b = self.block
+        start = self.start
+        end = ts
+        return BlockSlice(b, start, end,
+                          (start - b.start) // b.resolution,
+                          (end - start) // b.resolution)
 
 
 class BlockList:
@@ -181,6 +231,44 @@ def find_blocks_to_merge(resolution, blocks, *, max_size, keep_size,
     return result
 
 
+def find_blocks_to_downsample(resolution, blocks, new_resolution, start,
+                              max_gap, min_size, max_size):
+    assert new_resolution % resolution == 0
+    start = norm_res(start, new_resolution)
+    result = []
+    segment = None
+    it = (BlockSlice.make(r) for r in blocks if r.end > start)
+    b = None
+    while True:
+        b = b or next(it, None)
+        if not b:
+            break
+
+        prev = segment and segment[-1]
+        if not segment or (b.start - prev.end) // resolution > max_gap:
+            segment = []
+            if b.start <= start:
+                s_start = start
+            else:
+                s_start = norm_res(b.start, new_resolution)
+            s_stop = norm_res(s_start + max_size * resolution, new_resolution)
+            result.append((segment, s_start))
+
+        cur, b = b.slice(s_start).split(s_stop)
+        s_start = cur.end
+        segment.append(cur)
+        if s_start >= s_stop:
+            segment = []
+
+    if result:
+        last = result[-1][0]
+        ssize = (last[-1].end - last[0].start) // resolution
+        if ssize < min_size:
+            result = result[:-1]
+
+    return result
+
+
 def merge(data_dir, paths):
     blocks = list(map(get_info, paths))
     first = blocks[0]
@@ -241,7 +329,8 @@ def dump(path):
 
 @contextmanager
 def cursor(path, map_size=None, readonly=False):
-    with lmdb.open(path, map_size or map_size_for_path(path), subdir=False, readonly=readonly) as env:
+    with lmdb.open(path, map_size or map_size_for_path(path),
+                   subdir=False, readonly=readonly, lock=not readonly) as env:
         with env.begin(write=not readonly) as txn:
             with txn.cursor() as cur:
                 yield cur

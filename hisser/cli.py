@@ -4,7 +4,7 @@ from functools import wraps
 
 import click
 
-from . import config
+from . import config, db, server, buffer as hbuffer
 from .utils import parse_retentions, cached_property
 
 
@@ -35,34 +35,34 @@ class Config(dict):
 
     @cached_property
     def storage(self):
-        from hisser.db import Storage
-        return Storage(data_dir=self.str('DATA_DIR', required=True),
-                       merge_finder=self.merge_finder)
+        return db.Storage(data_dir=self.str('DATA_DIR', required=True),
+                          merge_finder=self.merge_finder)
+
+    @cached_property
+    def block_list(self):
+        return db.BlockList(data_dir=self.str('DATA_DIR', required=True))
 
     @cached_property
     def merge_finder(self):
-        from hisser.db import find_blocks_to_merge
-
         max_size=self.int('MERGE_MAX_SIZE')
         max_gap_size=self.int('MERGE_MAX_GAP_SIZE')
         keep_size=self.int('MERGE_KEEP_SIZE')
         ratio=self.float('MERGE_RATIO')
 
         def merge_finder(resolution, blocks):
-            return find_blocks_to_merge(resolution, blocks, max_size=max_size,
-                                        keep_size=keep_size, max_gap_size=max_gap_size,
-                                        ratio=ratio)
+            return db.find_blocks_to_merge(resolution, blocks, max_size=max_size,
+                                           keep_size=keep_size, max_gap_size=max_gap_size,
+                                           ratio=ratio)
         return merge_finder
 
     @cached_property
     def buffer(self):
-        from hisser.buffer import Buffer
         min_res = self.retentions('RETENTIONS')[0][0]
-        return Buffer(size=self.int('BUFFER_SIZE'),
-                      resolution=min_res,
-                      flush_size=self.int('BUFFER_FLUSH_SIZE'),
-                      past_size=self.int('BUFFER_PAST_SIZE'),
-                      max_points=self.int('BUFFER_MAX_POINTS'))
+        return hbuffer.Buffer(size=self.int('BUFFER_SIZE'),
+                              resolution=min_res,
+                              flush_size=self.int('BUFFER_FLUSH_SIZE'),
+                              past_size=self.int('BUFFER_PAST_SIZE'),
+                              max_points=self.int('BUFFER_MAX_POINTS'))
 
 
 def get_config(args):
@@ -110,8 +110,22 @@ def common_options(func):
 @click.argument('block', nargs=-1)
 @config_aware
 def cmd_merge(cfg):
-    from hisser.db import merge
-    merge(cfg.str('DATA_DIR', required=True), [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
+    db.merge(cfg.str('DATA_DIR', required=True), [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
+
+
+@cli.command('downsample', help='run downsample')
+@common_options
+@config_aware
+def cmd_downsample(cfg):
+    blocks = cfg.block_list.blocks()
+    hblocks = blocks.get(60, [])
+    if not hblocks:
+        return
+
+    lblocks = blocks.get(300, [])
+    start = (lblocks and lblocks[-1].end) or (hblocks and hblocks[0].start)
+    from pprint import pprint
+    pprint(db.find_blocks_to_downsample(60, blocks[60], 300, start, 30, 10, 400))
 
 
 @cli.command('run', help='run server')
@@ -120,11 +134,10 @@ def cmd_merge(cfg):
               help='host and port to listen carbon text protocol, default is {}'.format(config.CARBON_BIND))
 @config_aware
 def cmd_run(cfg):
-    from hisser.server import loop
-    loop(buf=cfg.buffer,
-         storage=cfg.storage,
-         host_port=cfg.host_port('CARBON_BIND'),
-         backlog=cfg.int('CARBON_BACKLOG'))
+    server.loop(buf=cfg.buffer,
+                storage=cfg.storage,
+                host_port=cfg.host_port('CARBON_BIND'),
+                backlog=cfg.int('CARBON_BACKLOG'))
 
 
 if __name__ == '__main__':
