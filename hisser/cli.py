@@ -79,7 +79,7 @@ class Config(dict):
 
     @cached_property
     def buffer(self):
-        min_res = self.retentions[0]
+        min_res = self.retentions[0][0]
         return hbuffer.Buffer(size=self.int('BUFFER_SIZE'),
                               resolution=min_res,
                               flush_size=self.int('BUFFER_FLUSH_SIZE'),

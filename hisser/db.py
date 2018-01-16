@@ -13,6 +13,10 @@ from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
                     MB, page_size, map_size_for_path, norm_res, safe_avg)
 
 
+def abs_ratio(a, b):
+    return max(a, b) / (min(a, b) or 1)
+
+
 class BlockInfo(namedtuple('BlockInfo', 'start end idx size resolution path')):
     @staticmethod
     def make(start, size, resolution, path):
@@ -148,8 +152,15 @@ class Reader:
             matched_metrics[q] = ['.'.join(n) for _, n in result]
         return matched_metrics
 
-    def fetch(self, keys, start, stop):
-        res = 300
+    def fetch(self, keys, start, stop, res=None, rest_res=None):
+        if not res:
+            resolutions = [r[0] for r in self.retentions]
+            resolutions.reverse()
+            res = min(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
+            rest_res = [r for r in resolutions if r < res]
+
+        rstop = stop
+
         blocks = self.block_list.blocks(res)
         start = start // res * res
         stop = stop // res * res
@@ -203,7 +214,7 @@ class Storage:
             blocks = block_list.blocks(res)
             for p1, p2 in self.merge_finder(res, blocks):
                 print('Merge', p1, p2)
-                merge(self.data_dir, [p1, p2])
+                merge(self.data_dir, res, [p1, p2])
 
     def do_downsample(self):
         block_list = BlockList(self.data_dir)
@@ -322,8 +333,8 @@ def downsample(data_dir, new_resolution, segments):
         print('Created new segment', path)
 
 
-def merge(data_dir, paths):
-    blocks = list(map(get_info, paths))
+def merge(data_dir, res, paths):
+    blocks = [get_info(p, res) for p in paths]
     first = blocks[0]
     last = blocks[-1]
     assert all(first.resolution == r.resolution for r in blocks), 'All blocks must have same resolution'
