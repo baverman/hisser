@@ -39,6 +39,9 @@ MERGE_KEEP_SIZE = 30
 MERGE_MAX_GAP_SIZE = 30
 MERGE_RATIO = 1.4
 
+DOWNSAMPLE_MIN_SIZE = 10
+DOWNSAMPLE_MAX_SIZE = 1000
+
 # Listen tcp `[host]:port` for carbon text protocol,
 # by default host is 0.0.0.0.
 CARBON_BIND = ':2003'

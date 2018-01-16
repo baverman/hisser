@@ -101,7 +101,15 @@ class BlockList:
 
     def rescan(self, resolution):
         blocks = self._blocks[resolution] = []
-        for e in os.scandir(os.path.join(self.data_dir, str(resolution))):
+        data_path = os.path.join(self.data_dir, str(resolution))
+
+        try:
+            entries = os.scandir(data_path)
+        except FileNotFoundError:
+            os.makedirs(data_path, exist_ok=True)
+            entries = []
+
+        for e in entries:
             if not e.name.endswith('.hdb') or not e.is_file():
                 continue
             try:
@@ -175,14 +183,19 @@ class Reader:
 
 
 class Storage:
-    def __init__(self, data_dir, merge_finder, retentions):
+    def __init__(self, data_dir, retentions, merge_finder, downsample_finder):
         self.data_dir = data_dir
-        self.merge_finder = merge_finder
         self.retentions = retentions
+        self.merge_finder = merge_finder
+        self.downsample_finder = downsample_finder
 
     def new_block(self, data, ts, resolution, size):
         data = sorted((k, list(v)) for k, v in data)
         return new_block(self.data_dir, data, ts, resolution, size, append=True)
+
+    def do_housework(self):
+        self.do_merge()
+        self.do_downsample()
 
     def do_merge(self):
         block_list = BlockList(self.data_dir)
@@ -191,6 +204,19 @@ class Storage:
             for p1, p2 in self.merge_finder(res, blocks):
                 print('Merge', p1, p2)
                 merge(self.data_dir, [p1, p2])
+
+    def do_downsample(self):
+        block_list = BlockList(self.data_dir)
+        resolutions = [r[0] for r in self.retentions]
+        for res, new_res in zip(resolutions[:-1], resolutions[1:]):
+            blocks = block_list.blocks(res)
+            if not blocks:
+                continue
+            new_blocks = block_list.blocks(new_res)
+            start = new_blocks and new_blocks[-1].end or 0
+            segments = self.downsample_finder(res, blocks, new_res, start)
+            if segments:
+                downsample(self.data_dir, new_res, segments)
 
 
 def find_blocks_to_merge(resolution, blocks, *, max_size, keep_size,
@@ -223,7 +249,7 @@ def find_blocks_to_merge(resolution, blocks, *, max_size, keep_size,
 
 
 def find_blocks_to_downsample(resolution, blocks, new_resolution,
-                              max_gap, min_size, max_size, start=0):
+                              max_gap_size, min_size, max_size, start=0):
     assert new_resolution % resolution == 0
     start = norm_res(start, new_resolution)
     result = []
@@ -236,7 +262,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
             break
 
         prev = segment and segment[-1]
-        if not segment or (b.start - prev.end) // new_resolution > max_gap:
+        if not segment or (b.start - prev.end) // new_resolution > max_gap_size:
             segment = []
             if b.start <= start:
                 s_start = start
@@ -292,7 +318,8 @@ def downsample(data_dir, new_resolution, segments):
             result.append((k, agg))
 
         result.sort()
-        new_block(data_dir, result, s_start, new_resolution, s_size // csize, append=True)
+        path = new_block(data_dir, result, s_start, new_resolution, s_size // csize, append=True)
+        print('Created new segment', path)
 
 
 def merge(data_dir, paths):
@@ -341,6 +368,8 @@ def new_block(data_dir, data, timestamp, resolution, size, append=False, notify=
 
     if notify:
         notify_blocks_changed(data_dir, resolution)
+
+    return path
 
 
 def read_block(path, keys):

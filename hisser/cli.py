@@ -41,7 +41,9 @@ class Config(dict):
     @cached_property
     def storage(self):
         return db.Storage(data_dir=self.data_dir,
-                          merge_finder=self.merge_finder)
+                          retentions=self.retentions,
+                          merge_finder=self.merge_finder,
+                          downsample_finder=self.downsample_finder)
 
     @cached_property
     def block_list(self):
@@ -59,6 +61,21 @@ class Config(dict):
                                            keep_size=keep_size, max_gap_size=max_gap_size,
                                            ratio=ratio)
         return merge_finder
+
+    @cached_property
+    def downsample_finder(self):
+        max_size=self.int('DOWNSAMPLE_MAX_SIZE')
+        min_size=self.int('DOWNSAMPLE_MIN_SIZE')
+        max_gap_size=self.int('MERGE_MAX_GAP_SIZE')
+
+        def finder(resolution, blocks, new_resolution, start=0):
+            return db.find_blocks_to_downsample(
+                resolution, blocks, new_resolution,
+                max_size=max_size, min_size=min_size,
+                max_gap_size=max_gap_size, start=start
+            )
+
+        return finder
 
     @cached_property
     def buffer(self):
@@ -126,14 +143,7 @@ def cmd_merge(cfg):
 @common_options
 @config_aware
 def cmd_downsample(cfg):
-    blocks = cfg.block_list.blocks(60)
-    if not blocks:
-        return
-
-    lblocks = cfg.block_list.blocks(300)
-    start = (lblocks and lblocks[-1].end) or 0
-    segments = db.find_blocks_to_downsample(60, blocks, 300, 30, 10, 700, start)
-    db.downsample(cfg.data_dir, 300, segments)
+    cfg.storage.do_downsample()
 
 
 @cli.command('dump', help='dump content of block')

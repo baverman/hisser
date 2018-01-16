@@ -79,7 +79,7 @@ def loop(buf, storage, host_port, backlog):
             if result:
                 child_pids.add(run_in_fork(storage.new_block, *result).pid)
                 if not merge_fork:
-                    merge_fork = run_in_fork(storage.do_merge)
+                    merge_fork = run_in_fork(storage.do_housework)
                     child_pids.add(merge_fork.pid)
     except KeyboardInterrupt:
         pass
