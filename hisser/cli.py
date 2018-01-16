@@ -30,17 +30,22 @@ class Config(dict):
         url = urlsplit('tcp://' + param)
         return url.hostname, url.port or port
 
-    def retentions(self, name):
-        return parse_retentions(self[name])
+    @cached_property
+    def data_dir(self):
+        return self.str('DATA_DIR', required=True)
+
+    @cached_property
+    def retentions(self):
+        return parse_retentions(self['RETENTIONS'])
 
     @cached_property
     def storage(self):
-        return db.Storage(data_dir=self.str('DATA_DIR', required=True),
+        return db.Storage(data_dir=self.data_dir,
                           merge_finder=self.merge_finder)
 
     @cached_property
     def block_list(self):
-        return db.BlockList(data_dir=self.str('DATA_DIR', required=True))
+        return db.BlockList(data_dir=self.data_dir)
 
     @cached_property
     def merge_finder(self):
@@ -57,12 +62,16 @@ class Config(dict):
 
     @cached_property
     def buffer(self):
-        min_res = self.retentions('RETENTIONS')[0][0]
+        min_res = self.retentions[0]
         return hbuffer.Buffer(size=self.int('BUFFER_SIZE'),
                               resolution=min_res,
                               flush_size=self.int('BUFFER_FLUSH_SIZE'),
                               past_size=self.int('BUFFER_PAST_SIZE'),
                               max_points=self.int('BUFFER_MAX_POINTS'))
+
+    @cached_property
+    def reader(self):
+        return db.Reader(self.block_list, self.retentions)
 
 
 def get_config(args):
@@ -77,7 +86,7 @@ def get_config(args):
         if not k.startswith('_') and v is not None:
             result[k.upper()] = v
 
-    for k, v in result.items():
+    for k in result:
         if k in os.environ:
             result[k] = os.environ[k]
 
@@ -110,22 +119,43 @@ def common_options(func):
 @click.argument('block', nargs=-1)
 @config_aware
 def cmd_merge(cfg):
-    db.merge(cfg.str('DATA_DIR', required=True), [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
+    db.merge(cfg.data_dir, [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
 
 
 @cli.command('downsample', help='run downsample')
 @common_options
 @config_aware
 def cmd_downsample(cfg):
-    blocks = cfg.block_list.blocks()
-    hblocks = blocks.get(60, [])
-    if not hblocks:
+    blocks = cfg.block_list.blocks(60)
+    if not blocks:
         return
 
-    lblocks = blocks.get(300, [])
-    start = (lblocks and lblocks[-1].end) or (hblocks and hblocks[0].start)
-    from pprint import pprint
-    pprint(db.find_blocks_to_downsample(60, blocks[60], 300, start, 30, 10, 400))
+    lblocks = cfg.block_list.blocks(300)
+    start = (lblocks and lblocks[-1].end) or 0
+    segments = db.find_blocks_to_downsample(60, blocks, 300, 30, 10, 700, start)
+    db.downsample(cfg.data_dir, 300, segments)
+
+
+@cli.command('dump', help='dump content of block')
+@click.argument('block')
+@config_aware
+def cmd_dump(cfg):
+    for k, v in db.dump(cfg.BLOCK):
+        print(k.decode(), len(v), v)
+
+
+@cli.command('check', help='checks metadata')
+@click.argument('block', nargs=-1)
+@config_aware
+def cmd_check(cfg):
+    for path in cfg.BLOCK:
+        block = db.get_info(path)
+        result = set()
+        for _k, v in db.dump(path):
+            result.add(len(v))
+
+        if len(result) > 2 or list(result)[0] != block.size:
+            print(path, 'Invalid sizes', sorted(result))
 
 
 @cli.command('run', help='run server')
@@ -140,5 +170,12 @@ def cmd_run(cfg):
                 backlog=cfg.int('CARBON_BACKLOG'))
 
 
+@cli.command('test')
+@common_options
+@config_aware
+def cmd_test(cfg):
+    print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
+
+
 if __name__ == '__main__':
-    cli()
+    cli(prog_name='hisser')

@@ -39,27 +39,29 @@ def safe_avg(data):
     total, n = _sum(data)
     if n:
         return total / n
+    return NAN
 
 
 def safe_sum(data):
     total, n = _sum(data)
     if n:
         return total
+    return NAN
 
 
 def safe_max(data):
-    return max(filter(is_not_nan, data), default=None)
+    return max(filter(is_not_nan, data), default=NAN)
 
 
 def safe_min(data):
-    return min(filter(is_not_nan, data), default=None)
+    return min(filter(is_not_nan, data), default=NAN)
 
 
 def safe_last(data):
     try:
         return list(filter(is_not_nan, data))[-1]
     except IndexError:
-        pass
+        return NAN
 
 
 def parse_seconds(interval):
@@ -75,8 +77,7 @@ def parse_seconds(interval):
 
 def parse_retentions(string):
     result = (part.split(':') for part in string.split(','))
-    result = ((parse_seconds(res), parse_seconds(ret)) for res, ret in result)
-    return sorted((res, ret // res) for res, ret in result)
+    return sorted((parse_seconds(res), parse_seconds(ret)) for res, ret in result)
 
 
 def page_size(size):

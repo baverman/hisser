@@ -3,7 +3,7 @@ from graphite.node import LeafNode, BranchNode
 from graphite.finders.utils import BaseFinder
 from graphite.readers.utils import BaseReader
 
-from .db import Reader, BlockList
+from .cli import get_config
 
 
 def match(pattern, text):
@@ -23,13 +23,14 @@ def scream(fn):
 
 class Finder(BaseFinder):
     def __init__(self):
-        self.db = Reader(BlockList('/home/bobrov/work/hisser/tmp'))
+        self.cfg = get_config({})
+        self.reader = self.cfg.reader
 
     @scream
     def find_nodes(self, query):
         patterns = query.pattern.split('.')
         result = set()
-        for m in self.db.metric_names():
+        for m in self.reader.metric_names():
             mparts = m.split('.')
             if len(mparts) >= len(patterns) and all(match(p, t) for p, t in zip(patterns, mparts)):
                 result.add((len(patterns)==len(mparts), '.'.join(mparts[:len(patterns)])))
@@ -42,11 +43,11 @@ class Finder(BaseFinder):
 
     @scream
     def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
-        metrics = self.db.find_metrics(patterns)
+        metrics = self.reader.find_metrics(patterns)
         keys = set()
         for v in metrics.values():
             keys.update(v)
-        time_info, data = self.db.fetch(keys, start_time, stop_time)
+        time_info, data = self.reader.fetch(keys, start_time, stop_time)
 
         result = []
         for query, names in metrics.items():
