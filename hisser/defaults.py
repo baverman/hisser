@@ -49,6 +49,9 @@ DOWNSAMPLE_MAX_SIZE = 1000
 # by default host is 0.0.0.0.
 CARBON_BIND = ':2003'
 
+# Listen udp `[host]:port` for carbon text protocol
+CARBON_BIND_UDP = None
+
 # Listen backlog for carbon protocol
 CARBON_BACKLOG = 100
 

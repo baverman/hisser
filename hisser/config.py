@@ -42,8 +42,10 @@ class Config(dict):
             raise ValueError('Required param')
         return param
 
-    def host_port(self, name, host='0.0.0.0', port=2003):
+    def host_port(self, name, host='0.0.0.0', port=2003, required=True):
         param = self[name] or ''
+        if not param and not required:
+            return None
         if param.startswith(':'):
             param = host + param
         url = urlsplit('tcp://' + param)

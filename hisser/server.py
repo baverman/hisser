@@ -5,7 +5,7 @@ from selectors import DefaultSelector, EVENT_READ
 from .utils import run_in_fork, wait_childs
 
 
-def loop(buf, storage, host_port, backlog):
+def loop(buf, storage, host_port, udp_host_port, backlog):
     def accept(sock, _cdata):
         conn, _addr = sock.accept()
         conn.setblocking(False)
@@ -21,6 +21,11 @@ def loop(buf, storage, host_port, backlog):
                 process(olddata, True)
             sel.unregister(conn)
             conn.close()
+
+    def read_udp(conn, cdata):
+        (data, addr) = conn.recvfrom(4096)
+        if data:
+            process(data, end=True)
 
     def process(data, end=False):
         lines = data.splitlines(True)
@@ -50,6 +55,13 @@ def loop(buf, storage, host_port, backlog):
     sock.listen(backlog)
     sock.setblocking(False)
     sel.register(sock, EVENT_READ, (accept, None))
+
+    if udp_host_port:
+        sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock_udp.bind(udp_host_port)
+        sock_udp.setblocking(False)
+        sel.register(sock_udp, EVENT_READ, (read_udp, None))
 
     ready_to_merge = False
     flush_pids = set()

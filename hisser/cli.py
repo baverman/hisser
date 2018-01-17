@@ -64,12 +64,15 @@ def cmd_check(cfg):
 @cli.command('run', help='run server')
 @common_options
 @click.option('--carbon-bind', '-l', metavar='[host]:port',
-              help='host and port to listen carbon text protocol, default is {}'.format(defaults.CARBON_BIND))
+              help='host and port to listen carbon text protocol on tcp, default is {}'.format(defaults.CARBON_BIND))
+@click.option('--carbon-bind-udp', metavar='[host]:port',
+              help='host and port to listen carbon text protocol on udp, default is {}'.format(defaults.CARBON_BIND_UDP))
 @config_aware
 def cmd_run(cfg):
     server.loop(buf=cfg.buffer,
                 storage=cfg.storage,
                 host_port=cfg.host_port('CARBON_BIND'),
+                udp_host_port=cfg.host_port('CARBON_BIND_UDP', required=False),
                 backlog=cfg.int('CARBON_BACKLOG'))
 
 
