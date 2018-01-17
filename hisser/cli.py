@@ -1,113 +1,6 @@
-import os
-from urllib.parse import urlsplit
 from functools import wraps
-
 import click
-
-from . import config, db, server, buffer as hbuffer
-from .utils import parse_retentions, cached_property
-
-
-class Config(dict):
-    __getattr__ = dict.__getitem__
-
-    def int(self, name):
-        return int(self[name])
-
-    def float(self, name):
-        return float(self[name])
-
-    def str(self, name, required=False):
-        param = self[name]
-        if required and not param:
-            raise ValueError('Required param')
-        return param
-
-    def host_port(self, name, host='0.0.0.0', port=2003):
-        param = self[name] or ''
-        if param.startswith(':'):
-            param = host + param
-        url = urlsplit('tcp://' + param)
-        return url.hostname, url.port or port
-
-    @cached_property
-    def data_dir(self):
-        return self.str('DATA_DIR', required=True)
-
-    @cached_property
-    def retentions(self):
-        return parse_retentions(self['RETENTIONS'])
-
-    @cached_property
-    def storage(self):
-        return db.Storage(data_dir=self.data_dir,
-                          retentions=self.retentions,
-                          merge_finder=self.merge_finder,
-                          downsample_finder=self.downsample_finder)
-
-    @cached_property
-    def block_list(self):
-        return db.BlockList(data_dir=self.data_dir)
-
-    @cached_property
-    def merge_finder(self):
-        max_size=self.int('MERGE_MAX_SIZE')
-        max_gap_size=self.int('MERGE_MAX_GAP_SIZE')
-        keep_size=self.int('MERGE_KEEP_SIZE')
-        ratio=self.float('MERGE_RATIO')
-
-        def merge_finder(resolution, blocks):
-            return db.find_blocks_to_merge(resolution, blocks, max_size=max_size,
-                                           keep_size=keep_size, max_gap_size=max_gap_size,
-                                           ratio=ratio)
-        return merge_finder
-
-    @cached_property
-    def downsample_finder(self):
-        max_size=self.int('DOWNSAMPLE_MAX_SIZE')
-        min_size=self.int('DOWNSAMPLE_MIN_SIZE')
-        max_gap_size=self.int('MERGE_MAX_GAP_SIZE')
-
-        def finder(resolution, blocks, new_resolution, start=0):
-            return db.find_blocks_to_downsample(
-                resolution, blocks, new_resolution,
-                max_size=max_size, min_size=min_size,
-                max_gap_size=max_gap_size, start=start
-            )
-
-        return finder
-
-    @cached_property
-    def buffer(self):
-        min_res = self.retentions[0][0]
-        return hbuffer.Buffer(size=self.int('BUFFER_SIZE'),
-                              resolution=min_res,
-                              flush_size=self.int('BUFFER_FLUSH_SIZE'),
-                              past_size=self.int('BUFFER_PAST_SIZE'),
-                              max_points=self.int('BUFFER_MAX_POINTS'))
-
-    @cached_property
-    def reader(self):
-        return db.Reader(self.block_list, self.retentions)
-
-
-def get_config(args):
-    result = Config((k, v) for k, v in vars(config).items()
-                    if not k.startswith('_'))
-
-    if args.get('_config'):
-        from runpy import run_path
-        result.update(run_path(args['_config']))
-
-    for k, v in args.items():
-        if not k.startswith('_') and v is not None:
-            result[k.upper()] = v
-
-    for k in result:
-        if k in os.environ:
-            result[k] = os.environ[k]
-
-    return result
+from . import config, db, server, defaults, agg
 
 
 @click.group()
@@ -118,7 +11,7 @@ def cli():
 def config_aware(func):
     @wraps(func)
     def inner(**kwargs):
-        cfg = get_config(kwargs)
+        cfg = config.get_config(kwargs)
         return func(cfg)
     return inner
 
@@ -171,13 +64,22 @@ def cmd_check(cfg):
 @cli.command('run', help='run server')
 @common_options
 @click.option('--carbon-bind', '-l', metavar='[host]:port',
-              help='host and port to listen carbon text protocol, default is {}'.format(config.CARBON_BIND))
+              help='host and port to listen carbon text protocol, default is {}'.format(defaults.CARBON_BIND))
 @config_aware
 def cmd_run(cfg):
     server.loop(buf=cfg.buffer,
                 storage=cfg.storage,
                 host_port=cfg.host_port('CARBON_BIND'),
                 backlog=cfg.int('CARBON_BACKLOG'))
+
+
+@cli.command('agg-method', help='show aggregation method for metric')
+@click.argument('metric', metavar='metric.name')
+@config_aware
+def cmd_agg_method(cfg):
+    method = cfg.agg_rules.get_method(cfg.METRIC)
+    rmethods = {v:k for k, v in agg.METHODS.items()}
+    print(rmethods[method])
 
 
 @cli.command('test')

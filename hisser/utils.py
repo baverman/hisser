@@ -11,8 +11,6 @@ import msgpack
 NAN = float('nan')
 MB = 1 << 20
 PAGE_SIZE = resource.getpagesize()
-TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
-                 'w': 86400 * 7, 'y': 86400 * 365}
 
 mdumps = partial(msgpack.dumps, use_bin_type=True)
 mloads = partial(msgpack.loads, encoding='utf-8')
@@ -24,60 +22,6 @@ def norm_res(ts, res):
 
 def estimate_data_size(data, size):
     return (1000 * len(data) + size * 8 * len(data))
-
-
-def is_not_nan(num):
-    return not isnan(num)
-
-
-def _sum(data):
-    non_empty = list(filter(is_not_nan, data))
-    return sum(non_empty), len(non_empty)
-
-
-def safe_avg(data):
-    total, n = _sum(data)
-    if n:
-        return total / n
-    return NAN
-
-
-def safe_sum(data):
-    total, n = _sum(data)
-    if n:
-        return total
-    return NAN
-
-
-def safe_max(data):
-    return max(filter(is_not_nan, data), default=NAN)
-
-
-def safe_min(data):
-    return min(filter(is_not_nan, data), default=NAN)
-
-
-def safe_last(data):
-    try:
-        return list(filter(is_not_nan, data))[-1]
-    except IndexError:
-        return NAN
-
-
-def parse_seconds(interval):
-    if isinstance(interval, int):
-        return interval
-
-    interval = interval.strip()
-    if interval.isdigit():
-        return int(interval)
-
-    return int(interval[:-1]) * TIME_SUFFIXES[interval[-1]]
-
-
-def parse_retentions(string):
-    result = (part.split(':') for part in string.split(','))
-    return sorted((parse_seconds(res), parse_seconds(ret)) for res, ret in result)
 
 
 def page_size(size):

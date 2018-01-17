@@ -1,9 +1,7 @@
-from time import time
 from graphite.node import LeafNode, BranchNode
 from graphite.finders.utils import BaseFinder
-from graphite.readers.utils import BaseReader
 
-from .cli import get_config
+from . import config
 
 
 def match(pattern, text):
@@ -23,7 +21,7 @@ def scream(fn):
 
 class Finder(BaseFinder):
     def __init__(self):
-        self.cfg = get_config({})
+        self.cfg = config.get_config({})
         self.reader = self.cfg.reader
 
     @scream
@@ -33,7 +31,7 @@ class Finder(BaseFinder):
         for m in self.reader.metric_names():
             mparts = m.split('.')
             if len(mparts) >= len(patterns) and all(match(p, t) for p, t in zip(patterns, mparts)):
-                result.add((len(patterns)==len(mparts), '.'.join(mparts[:len(patterns)])))
+                result.add((len(patterns) == len(mparts), '.'.join(mparts[:len(patterns)])))
 
         for l, r in sorted(result):
             if l:

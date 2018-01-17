@@ -51,8 +51,9 @@ def loop(buf, storage, host_port, backlog):
     sock.setblocking(False)
     sel.register(sock, EVENT_READ, (accept, None))
 
-    child_pids = set()
-    merge_fork = None
+    ready_to_merge = False
+    flush_pids = set()
+    merge_pid = None
 
     try:
         while True:
@@ -61,25 +62,30 @@ def loop(buf, storage, host_port, backlog):
                 callback, data = key.data
                 callback(key.fileobj, data)
 
-            if child_pids:
+            if flush_pids or merge_pid:
                 try:
                     pid, _exit = wait_childs()
                 except OSError as e:
                     if e.errno == errno.ECHILD:
-                        child_pids.clear()
-                        merge_fork = None
+                        flush_pids.clear()
+                        merge_pid = None
                     else:
                         raise
                 else:
-                    pid in child_pids and child_pids.remove(pid)
-                    if pid and merge_fork.pid == pid:
-                        merge_fork = None
+                    if flush_pids and pid in flush_pids:
+                        flush_pids.remove(pid)
+                        ready_to_merge = True
+                    if merge_pid and merge_pid == pid:
+                        merge_pid = None
 
             result = buf.tick()
             if result:
-                child_pids.add(run_in_fork(storage.new_block, *result).pid)
-                if not merge_fork:
-                    merge_fork = run_in_fork(storage.do_housework)
-                    child_pids.add(merge_fork.pid)
+                flush_pids.add(run_in_fork(storage.new_block, *result).pid)
+                ready_to_merge = False
+
+            if ready_to_merge and not merge_pid:
+                print('Run housework')
+                merge_pid = run_in_fork(storage.do_housework).pid
+                ready_to_merge = False
     except KeyboardInterrupt:
         pass

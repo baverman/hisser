@@ -10,7 +10,8 @@ from collections import namedtuple
 import lmdb
 
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
-                    MB, page_size, map_size_for_path, norm_res, safe_avg)
+                    MB, page_size, map_size_for_path, norm_res)
+from .agg import safe_avg
 
 
 def abs_ratio(a, b):
@@ -91,7 +92,8 @@ class BlockList:
             return
 
         try:
-            new_state = os.path.getmtime(os.path.join(self.data_dir, str(resolution), 'blocks.state'))
+            new_state = os.path.getmtime(os.path.join(self.data_dir,
+                                                      str(resolution), 'blocks.state'))
         except OSError:
             new_state = 0
 
@@ -194,11 +196,13 @@ class Reader:
 
 
 class Storage:
-    def __init__(self, data_dir, retentions, merge_finder, downsample_finder):
+    def __init__(self, data_dir, retentions, merge_finder,
+                 downsample_finder, agg_rules):
         self.data_dir = data_dir
         self.retentions = retentions
         self.merge_finder = merge_finder
         self.downsample_finder = downsample_finder
+        self.agg_rules = agg_rules
 
     def new_block(self, data, ts, resolution, size):
         data = sorted((k, list(v)) for k, v in data)
@@ -227,14 +231,13 @@ class Storage:
             start = new_blocks and new_blocks[-1].end or 0
             segments = self.downsample_finder(res, blocks, new_res, start)
             if segments:
-                downsample(self.data_dir, new_res, segments)
+                downsample(self.data_dir, new_res, segments, self.agg_rules)
 
 
-def find_blocks_to_merge(resolution, blocks, *, max_size, keep_size,
+def find_blocks_to_merge(resolution, blocks, *, max_size,
                          max_gap_size, ratio, now=None):
     result = []
     now = now or time()
-    stop = now - keep_size * resolution
     found = False
     for b1, b2 in zip(blocks[:-1], blocks[1:]):
         if found:
@@ -245,9 +248,6 @@ def find_blocks_to_merge(resolution, blocks, *, max_size, keep_size,
             continue
 
         if (b2.end - b1.start) // resolution >= max_size:
-            continue
-
-        if b2.end > stop:
             continue
 
         if max(b1.size, b2.size) / min(b1.size, b2.size) > ratio:
@@ -304,7 +304,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
     return final_result
 
 
-def downsample(data_dir, new_resolution, segments):
+def downsample(data_dir, new_resolution, segments, agg_rules):
     for (blocks, s_start, s_stop) in segments:
         resolution = blocks[0].resolution
         s_size = (s_stop - s_start) // resolution
@@ -325,7 +325,8 @@ def downsample(data_dir, new_resolution, segments):
         result = []
         csize = new_resolution // resolution
         for k, values in data.items():
-            agg = [safe_avg(values[k:k+csize]) for k in range(0, len(values), csize)]
+            agg_method = agg_rules.get_method(k, use_bin=True)
+            agg = [agg_method(values[k:k+csize]) for k in range(0, len(values), csize)]
             result.append((k, agg))
 
         result.sort()
@@ -337,8 +338,6 @@ def merge(data_dir, res, paths):
     blocks = [get_info(p, res) for p in paths]
     first = blocks[0]
     last = blocks[-1]
-    assert all(first.resolution == r.resolution for r in blocks), 'All blocks must have same resolution'
-    res = first.resolution
     size = (last.end - first.start) // res
     empty_row = [NAN] * size
 
