@@ -1,6 +1,6 @@
 from functools import wraps
 import click
-from . import config, db, server, defaults, agg
+from . import config, db, defaults, agg
 
 
 @click.group()
@@ -69,11 +69,9 @@ def cmd_check(cfg):
               help='host and port to listen carbon text protocol on udp, default is {}'.format(defaults.CARBON_BIND_UDP))
 @config_aware
 def cmd_run(cfg):
-    server.loop(buf=cfg.buffer,
-                storage=cfg.storage,
-                host_port=cfg.host_port('CARBON_BIND'),
-                udp_host_port=cfg.host_port('CARBON_BIND_UDP', required=False),
-                backlog=cfg.int('CARBON_BACKLOG'))
+    server = cfg.server
+    server.listen()
+    server.run()
 
 
 @cli.command('agg-method', help='show aggregation method for metric')
@@ -89,7 +87,8 @@ def cmd_agg_method(cfg):
 @common_options
 @config_aware
 def cmd_test(cfg):
-    print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
+    # print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
+    print(cfg.rpc_client.call('fetch', keys=['boo', 'foo']))
 
 
 if __name__ == '__main__':

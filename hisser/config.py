@@ -1,7 +1,7 @@
 import os
 from urllib.parse import urlsplit
 
-from . import defaults, db, buffer as hbuffer, agg
+from . import defaults, db, buffer as hbuffer, agg, server
 from .utils import cached_property
 
 TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
@@ -114,6 +114,23 @@ class Config(dict):
     @cached_property
     def reader(self):
         return db.Reader(self.block_list, self.retentions)
+
+    @cached_property
+    def server(self):
+        return server.Server(
+            buf=self.buffer,
+            storage=self.storage,
+            carbon_host_port_tcp=self.host_port('CARBON_BIND'),
+            carbon_host_port_udp=self.host_port('CARBON_BIND_UDP', required=False),
+            link_host_port=self.host_port('LINK_BIND', required=False),
+            backlog=self.int('CARBON_BACKLOG')
+        )
+
+    @cached_property
+    def rpc_client(self):
+        host_port = self.host_port('LINK_BIND', required=False)
+        if host_port:
+            return server.RpcClient(host_port)
 
 
 def parse_retentions(string):
