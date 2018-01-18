@@ -1,7 +1,6 @@
 import os.path
 import pathlib
 
-from time import time
 from math import isnan
 from fnmatch import fnmatch
 from contextlib import contextmanager
@@ -11,7 +10,6 @@ import lmdb
 
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
                     MB, page_size, map_size_for_path, norm_res)
-from .agg import safe_avg
 
 
 def abs_ratio(a, b):
@@ -129,9 +127,10 @@ class BlockList:
 
 
 class Reader:
-    def __init__(self, block_list, retentions):
+    def __init__(self, block_list, retentions, rpc_client):
         self.block_list = block_list
         self.retentions = retentions
+        self.rpc_client = rpc_client
 
     def metric_names(self):
         blocks = self.block_list.blocks(self.retentions[0][0])
@@ -192,6 +191,27 @@ class Reader:
                 row[r_start_idx:r_end_idx] = [None if isnan(v) else v
                                               for v in values[b.idx:c_end_idx]]
 
+        stop = start + size * res
+        if not rest_res and rstop > stop:
+            return self.add_rest_data_from_buffer(keys, start, stop, rstop, res, size, result)
+        return (start, stop, res), result
+
+    def add_rest_data_from_buffer(self, keys, start, stop, rstop, res, size, result):
+        if not self.rpc_client:
+            return (start, stop, res), result
+        cur_data = self.rpc_client.call('fetch', keys=[r.encode() for r in keys])
+        cur_result = {k.decode(): v for k, v in cur_data['result'].items()}
+        cur_slice = BlockInfo.make(cur_data['start'], cur_data['resolution'], cur_data['size'], 'tmp')
+        ib = cur_slice.slice(stop, rstop)
+        if ib:
+            add = [None] * ((ib.end - stop) // res)
+            s_idx = size + (ib.start - stop) // res
+            for k, v in result.items():
+                v += add
+                if k in cur_result:
+                    v[s_idx: s_idx + ib.size] = cur_result[k]
+            stop = ib.end
+
         return (start, stop, res), result
 
 
@@ -235,9 +255,8 @@ class Storage:
 
 
 def find_blocks_to_merge(resolution, blocks, *, max_size,
-                         max_gap_size, ratio, now=None):
+                         max_gap_size, ratio):
     result = []
-    now = now or time()
     found = False
     for b1, b2 in zip(blocks[:-1], blocks[1:]):
         if found:

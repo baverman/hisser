@@ -113,7 +113,7 @@ class Config(dict):
 
     @cached_property
     def reader(self):
-        return db.Reader(self.block_list, self.retentions)
+        return db.Reader(self.block_list, self.retentions, self.rpc_client)
 
     @cached_property
     def server(self):

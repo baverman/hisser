@@ -88,7 +88,7 @@ def cmd_agg_method(cfg):
 @config_aware
 def cmd_test(cfg):
     # print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
-    print(cfg.rpc_client.call('fetch', keys=['boo', 'foo']))
+    print(cfg.rpc_client.call('fetch', keys=[b'random.diceroll', b'localhost.cpu.percent.idle', 'foo']))
 
 
 if __name__ == '__main__':

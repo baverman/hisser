@@ -6,7 +6,7 @@ from .utils import run_in_fork, wait_childs, mloads, mdumps
 
 
 def rpc_fetch(srv, keys):
-    return {'result': keys}
+    return srv.buf.get_data(keys)
 
 
 class Server:

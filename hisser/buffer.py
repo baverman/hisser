@@ -23,6 +23,19 @@ class Buffer:
 
         self.set_ts((now or time()) - self.past_size * resolution)
 
+    def get_data(self, keys):
+        result = {}
+        for k in keys:
+            try:
+                result[k] = list(self.data[k])
+            except KeyError:
+                pass
+
+        return {'start': self.ts,
+                'result': result,
+                'resolution': self.resolution,
+                'size': self.size}
+
     def cut_data(self, size):
         result = []
         empty_part = array('d', [NAN] * size)
