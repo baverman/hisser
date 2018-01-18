@@ -3,14 +3,10 @@ import os.path
 import pathlib
 
 from math import isnan
-from fnmatch import fnmatch
-from contextlib import contextmanager
 from collections import namedtuple
 
-import lmdb
-
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
-                    MB, page_size, map_size_for_path, norm_res)
+                    MB, page_size, norm_res, cursor)
 
 log = logging.getLogger(__name__)
 
@@ -134,27 +130,6 @@ class Reader:
         self.block_list = block_list
         self.retentions = retentions
         self.rpc_client = rpc_client
-
-    def metric_names(self):
-        blocks = self.block_list.blocks(self.retentions[0][0])
-        if not blocks:
-            return
-        with cursor(blocks[-1].path, readonly=True) as cur:
-            for k in cur.iternext(True, False):
-                yield k.decode()
-
-    def find_metrics(self, queries):
-        names = [r.split('.') for r in self.metric_names()]
-        lnames = [(len(r), r) for r in names]
-        matched_metrics = {}
-        for q in queries:
-            qparts = q.split('.')
-            qlen = len(qparts)
-            result = [(l, n) for l, n in lnames if l == qlen]
-            for idx, pattern in enumerate(qparts):
-                result = [(l, n) for l, n in result if fnmatch(n[idx], pattern)]
-            matched_metrics[q] = ['.'.join(n) for _, n in result]
-        return matched_metrics
 
     def fetch(self, keys, start, stop, res=None, rest_res=None):
         if not res:
@@ -418,16 +393,6 @@ def dump(path):
     with cursor(path, readonly=True) as cur:
         for k, v in cur:
             yield k, mloads(v)
-
-
-@contextmanager
-def cursor(path, map_size=None, readonly=False, lock=None):
-    lock = not readonly if lock is None else lock
-    with lmdb.open(path, map_size or map_size_for_path(path),
-                   subdir=False, readonly=readonly, lock=lock) as env:
-        with env.begin(write=not readonly) as txn:
-            with txn.cursor() as cur:
-                yield cur
 
 
 def notify_blocks_changed(data_dir, resolution):

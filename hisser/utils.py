@@ -5,8 +5,10 @@ from time import time
 from functools import partial
 from math import isnan, ceil
 from collections import namedtuple
+from contextlib import contextmanager
 
 import msgpack
+import lmdb
 
 NAN = float('nan')
 MB = 1 << 20
@@ -80,3 +82,27 @@ class cached_property(object):
             return self
         value = obj.__dict__[self.func.__name__] = self.func(obj)
         return value
+
+
+@contextmanager
+def cursor(path, map_size=None, readonly=False, lock=None):
+    lock = not readonly if lock is None else lock
+    try:
+        if map_size and map_size < 0:
+            map_size = map_size_for_path(path) - map_size
+        else:
+            map_size = map_size or map_size_for_path(path)
+    except FileNotFoundError:
+        map_size = 10*MB
+    with lmdb.open(path, map_size, subdir=False,
+                   readonly=readonly, lock=lock) as env:
+        with env.begin(write=not readonly) as txn:
+            with txn.cursor() as cur:
+                yield cur
+
+
+@contextmanager
+def txn_cursor(env, write=False, db=None):
+    with env.begin(write=write) as txn:
+        with txn.cursor(db) as cur:
+            yield cur

@@ -2,7 +2,7 @@ import os
 import logging.config
 from urllib.parse import urlsplit
 
-from . import defaults, db, buffer as hbuffer, agg, server
+from . import defaults, db, buffer as hbuffer, agg, server, metrics
 from .utils import cached_property
 
 TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
@@ -134,6 +134,10 @@ class Config(dict):
         host_port = self.host_port('LINK_BIND', required=False)
         if host_port:
             return server.RpcClient(host_port)
+
+    @cached_property
+    def metric_index(self):
+        return metrics.MetricIndex(os.path.join(self.data_dir, 'metric.index'))
 
     def setup_logging(self, daemon=True):
         if daemon and self.LOGGING:

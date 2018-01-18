@@ -4,10 +4,6 @@ from graphite.finders.utils import BaseFinder
 from . import config
 
 
-def match(pattern, text):
-    return pattern == '*' or pattern == text
-
-
 def scream(fn):
     def inner(*args, **kwargs):
         try:
@@ -23,25 +19,21 @@ class Finder(BaseFinder):
     def __init__(self):
         self.cfg = config.get_config({})
         self.reader = self.cfg.reader
+        self.metric_index = self.cfg.metric_index
 
     @scream
     def find_nodes(self, query):
-        patterns = query.pattern.split('.')
-        result = set()
-        for m in self.reader.metric_names():
-            mparts = m.split('.')
-            if len(mparts) >= len(patterns) and all(match(p, t) for p, t in zip(patterns, mparts)):
-                result.add((len(patterns) == len(mparts), '.'.join(mparts[:len(patterns)])))
-
-        for l, r in sorted(result):
+        for l, r in self.metric_index.find_tree(query.pattern):
             if l:
-                yield LeafNode(r, None)
+                yield LeafNode(r.decode(), None)
             else:
-                yield BranchNode(r)
+                yield BranchNode(r.decode())
 
     @scream
     def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
-        metrics = self.reader.find_metrics(patterns)
+        metrics = self.metric_index.find_metrics_many(patterns)
+        metrics = {k: [r.decode() for r in v] for k, v in metrics.items()}
+
         keys = set()
         for v in metrics.values():
             keys.update(v)

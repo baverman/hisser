@@ -35,7 +35,8 @@ def test_parse_aggregation():
 def test_cfg_agg_rules():
     cfg = {
         'AGG_RULE_B': '\.count$|sum',
-        'AGG_RULE_A': '\.min$|min'
+        'AGG_RULE_A': '\.min$|min',
+        'AGG_RULE_C': ''
     }
 
     rules = get_agg_rules_from_dict(cfg)
