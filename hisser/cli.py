@@ -12,6 +12,7 @@ def config_aware(func):
     @wraps(func)
     def inner(**kwargs):
         cfg = config.get_config(kwargs)
+        cfg.setup_logging(func.__name__ == 'cmd_run')
         return func(cfg)
     return inner
 
@@ -79,7 +80,7 @@ def cmd_run(cfg):
 @config_aware
 def cmd_agg_method(cfg):
     method = cfg.agg_rules.get_method(cfg.METRIC)
-    rmethods = {v:k for k, v in agg.METHODS.items()}
+    rmethods = {v: k for k, v in agg.METHODS.items()}
     print(rmethods[method])
 
 

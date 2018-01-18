@@ -60,3 +60,9 @@ LINK_BIND = '127.0.0.1:8002'
 
 # Listen backlog for link protocol
 LINK_BACKLOG = 100
+
+# Python logging dict, if none log to stdout
+LOGGING = None
+
+# Default log level
+LOGGING_LEVEL = 'INFO'

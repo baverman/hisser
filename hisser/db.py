@@ -1,3 +1,4 @@
+import logging
 import os.path
 import pathlib
 
@@ -10,6 +11,8 @@ import lmdb
 
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
                     MB, page_size, map_size_for_path, norm_res)
+
+log = logging.getLogger(__name__)
 
 
 def abs_ratio(a, b):
@@ -237,7 +240,7 @@ class Storage:
         for res, _ in self.retentions:
             blocks = block_list.blocks(res)
             for p1, p2 in self.merge_finder(res, blocks):
-                print('Merge', p1, p2)
+                log.info('Merge %s %s', p1, p2)
                 merge(self.data_dir, res, [p1, p2])
 
     def do_downsample(self):
@@ -350,7 +353,7 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
 
         result.sort()
         path = new_block(data_dir, result, s_start, new_resolution, s_size // csize, append=True)
-        print('Created new segment', path)
+        log.info('Downsample %s', path)
 
 
 def merge(data_dir, res, paths):

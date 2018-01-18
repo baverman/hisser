@@ -1,4 +1,5 @@
 import os
+import logging.config
 from urllib.parse import urlsplit
 
 from . import defaults, db, buffer as hbuffer, agg, server
@@ -12,17 +13,19 @@ def get_config(args):
     result = Config((k, v) for k, v in vars(defaults).items()
                     if not k.startswith('_'))
 
-    if args.get('_config'):
+    config_path = os.environ.get('HISSER_CONFIG') or args.get('_config')
+    if config_path:
         from runpy import run_path
-        result.update(run_path(args['_config']))
+        result.update(run_path(config_path))
 
     for k, v in args.items():
         if not k.startswith('_') and v is not None:
             result[k.upper()] = v
 
     for k in result:
-        if k in os.environ:
-            result[k] = os.environ[k]
+        ename = 'HISSER_' + k
+        if ename in os.environ:
+            result[k] = os.environ[ename]
 
     return result
 
@@ -131,6 +134,13 @@ class Config(dict):
         host_port = self.host_port('LINK_BIND', required=False)
         if host_port:
             return server.RpcClient(host_port)
+
+    def setup_logging(self, daemon=True):
+        if daemon and self.LOGGING:
+            logging.config.dictConfig(self.LOGGING)
+        else:
+            logging.basicConfig(level=self.LOGGING_LEVEL,
+                                format='[%(asctime)s] %(name)s:%(levelname)s %(message)s')
 
 
 def parse_retentions(string):
