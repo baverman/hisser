@@ -33,12 +33,13 @@ def common_options(func):
 
 @cli.command('merge', help='merge two or more blocks')
 @common_options
+@click.option('-r', 'resolution', type=int)
 @click.argument('block1')
 @click.argument('block2')
 @click.argument('block', nargs=-1)
 @config_aware
 def cmd_merge(cfg):
-    db.merge(cfg.data_dir, [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
+    db.merge(cfg.data_dir, cfg.RESOLUTION, [cfg.BLOCK1, cfg.BLOCK2] + list(cfg.BLOCK))
 
 
 @cli.command('downsample', help='run downsample')

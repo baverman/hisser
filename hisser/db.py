@@ -139,8 +139,6 @@ class Reader:
             res = min(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
             rest_res = [r for r in resolutions if r < res]
 
-        rstop = stop
-
         blocks = self.block_list.blocks(res)
         start = start // res * res
         stop = rstop = stop // res * res + res
@@ -358,13 +356,20 @@ def merge(data_dir, res, paths):
         row = data[k] = empty_row[:]
         row[:first.size] = v
 
+    last_idx = None
     for b in blocks[1:]:
         idx = (b.start - first.start) // res
-        for k, v in dump(b.path):
+        for k, values in dump(b.path):
             row = data.get(k)
             if not row:
                 row = data[k] = empty_row[:]
-            row[idx:idx+b.size] = v
+
+            if last_idx and idx <= last_idx:
+                print('Overlapped values')
+                values = [r if isnan(v) else v
+                          for r, v in zip(row[idx:idx+b.size], values)]
+            row[idx:idx+b.size] = values
+        last_idx = idx + b.size
 
     new_block(data_dir, sorted(data.items()),
               first.start, res, size, append=True, notify=False)
