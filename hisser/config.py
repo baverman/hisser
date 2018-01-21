@@ -73,7 +73,9 @@ class Config(dict):
                           retentions=self.retentions,
                           merge_finder=self.merge_finder,
                           downsample_finder=self.downsample_finder,
-                          agg_rules=self.agg_rules)
+                          agg_rules=self.agg_rules,
+                          metric_names=self.metric_names,
+                          metric_index=self.metric_index)
 
     @cached_property
     def block_list(self):
@@ -116,7 +118,10 @@ class Config(dict):
 
     @cached_property
     def reader(self):
-        return db.Reader(self.block_list, self.retentions, self.rpc_client)
+        return db.Reader(block_list=self.block_list,
+                         retentions=self.retentions,
+                         metric_names=self.metric_names,
+                         rpc_client=self.rpc_client)
 
     @cached_property
     def server(self):
@@ -138,6 +143,10 @@ class Config(dict):
     @cached_property
     def metric_index(self):
         return metrics.MetricIndex(os.path.join(self.data_dir, 'metric.index'))
+
+    @cached_property
+    def metric_names(self):
+        return metrics.MetricNames(os.path.join(self.data_dir, 'metric.names'))
 
     def setup_logging(self, daemon=True):
         if daemon and self.LOGGING:

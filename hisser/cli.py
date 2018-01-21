@@ -45,7 +45,7 @@ def cmd_downsample(cfg):
 @config_aware
 def cmd_dump(cfg):
     for k, v in db.dump(cfg.BLOCK):
-        print(k.decode(), len(v), v)
+        print(k, len(v), v)
 
 
 @cli.command('check', help='checks metadata')

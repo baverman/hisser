@@ -31,32 +31,38 @@ class MetricNames:
         with self.env.begin(write=True) as txn:
             return self.txn_allocate_ids(txn, count)
 
-    def txn_get_new_names(self, txn, names):
-        with txn.cursor(self.names_db) as cur:
-            return [r for r in names if cur.get(r) is None]
-
     def add(self, names, encoded=True):
         if not encoded:
             names = [r.encode() for r in names]
 
         with self.env.begin(write=True) as txn:
-            names = self.txn_get_new_names(txn, names)
-            if not names:
-                return {}
+            ids = self.txn_get_ids(txn, names)
 
-            start_id = self.txn_allocate_ids(txn, len(names))
-            result = {r: bigint_st.pack(i) for i, r in enumerate(names, start_id)}
+            new_names = [n for n, nid in zip(names, ids) if nid is None]
+
+            start_id = self.txn_allocate_ids(txn, len(new_names))
+            new_items = []
+            for idx, (n, nid) in enumerate(zip(names, ids)):
+                if nid is None:
+                    nid = bigint_st.pack(start_id)
+                    new_items.append((n, nid))
+                    ids[idx] = nid
+                    start_id += 1
 
             with txn.cursor(self.names_db) as cur:
-                cur.putmulti(result.items())
+                cur.putmulti(new_items)
 
             with txn.cursor(self.ids_db) as cur:
-                cur.putmulti((v, k) for k, v in result.items())
+                cur.putmulti((v, k) for k, v in new_items)
 
-        return result
+        return new_names, ids
 
     def get_ids(self, names):
-        with txn_cursor(self.env, db=self.names_db) as cur:
+        with self.env.begin() as txn:
+            return self.txn_get_ids(txn, names)
+
+    def txn_get_ids(self, txn, names):
+        with txn.cursor(self.names_db) as cur:
             return [cur.get(r) for r in names]
 
     def get_names(self, ids):

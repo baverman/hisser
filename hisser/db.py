@@ -126,12 +126,13 @@ class BlockList:
 
 
 class Reader:
-    def __init__(self, block_list, retentions, rpc_client):
+    def __init__(self, block_list, retentions, metric_names, rpc_client):
         self.block_list = block_list
         self.retentions = retentions
+        self.metric_names = metric_names
         self.rpc_client = rpc_client
 
-    def fetch(self, keys, start, stop, res=None, rest_res=None):
+    def fetch(self, names, start, stop, res=None, rest_res=None):
         if not res:
             resolutions = [r[0] for r in self.retentions]
             resolutions.reverse()
@@ -155,23 +156,24 @@ class Reader:
         start = blocks[0].start
         size = (blocks[-1].end - start) // res
         empty_row = [None] * size
+        ids2names = dict(zip(self.metric_names.get_ids(map(str.encode, names)), names))
         for b in blocks:
             r_start_idx = (b.start - start) // res
             r_end_idx = r_start_idx + b.size
             c_end_idx = b.idx + b.size
-            data = read_block(b.path, keys)
+            data = read_block(b.path, ids2names.keys())
             for k, values in data.items():
                 try:
-                    row = result[k]
+                    row = result[ids2names[k]]
                 except KeyError:
-                    row = result[k] = empty_row[:]
+                    row = result[ids2names[k]] = empty_row[:]
 
                 row[r_start_idx:r_end_idx] = [None if isnan(v) else v
                                               for v in values[b.idx:c_end_idx]]
 
         stop = start + size * res
         if not rest_res and rstop > stop:
-            return self.add_rest_data_from_buffer(keys, start, stop, rstop, res, size, result)
+            return self.add_rest_data_from_buffer(names, start, stop, rstop, res, size, result)
         return (start, stop, res), result
 
     def add_rest_data_from_buffer(self, keys, start, stop, rstop, res, size, result):
@@ -194,16 +196,21 @@ class Reader:
 
 
 class Storage:
-    def __init__(self, data_dir, retentions, merge_finder,
-                 downsample_finder, agg_rules):
+    def __init__(self, data_dir, retentions, merge_finder, downsample_finder,
+                 agg_rules, metric_index, metric_names):
         self.data_dir = data_dir
         self.retentions = retentions
         self.merge_finder = merge_finder
         self.downsample_finder = downsample_finder
         self.agg_rules = agg_rules
+        self.metric_index = metric_index
+        self.metric_names = metric_names
 
     def new_block(self, data, ts, resolution, size):
-        data = sorted((k, list(v)) for k, v in data)
+        new_names, ids = self.metric_names.add([k for k, _ in data])
+        if new_names:
+            self.metric_index.add_tree(sorted(new_names))
+        data = sorted((nid, list(v)) for (_, v), nid in zip(data, ids))
         return new_block(self.data_dir, data, ts, resolution, size, append=True)
 
     def do_housework(self):
@@ -383,7 +390,7 @@ def read_block(path, keys):
     result = {}
     with cursor(path, readonly=True) as cur:
         for k in keys:
-            v = cur.get(k.encode(), None)
+            v = cur.get(k, None)
             if v is not None:
                 result[k] = mloads(v)
     return result
