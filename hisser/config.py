@@ -33,18 +33,32 @@ def get_config(args):
 class Config(dict):
     __getattr__ = dict.__getitem__
 
+    class Error(Exception): pass
+
+    def error(func):
+        def inner(self, name, *args, **kwargs):
+            try:
+                return func(self, name, *args, **kwargs)
+            except Exception as e:
+                raise Config.Error('{}: {}'.format(name, str(e))) from e
+        return inner
+
+    @error
     def int(self, name):
         return int(self[name])
 
+    @error
     def float(self, name):
         return float(self[name])
 
+    @error
     def str(self, name):
         param = self[name]
         if not param:
-            raise ValueError('Required param')
+            raise ValueError('Required option')
         return param
 
+    @error
     def host_port(self, name, host='0.0.0.0', port=2003, required=True):
         param = self[name] or ''
         if not param and not required:

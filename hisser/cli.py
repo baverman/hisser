@@ -1,4 +1,6 @@
+import sys
 from functools import wraps
+
 import click
 from . import config, db, defaults, agg
 
@@ -13,7 +15,12 @@ def config_aware(func):
     def inner(**kwargs):
         cfg = config.get_config(kwargs)
         cfg.setup_logging(func.__name__ == 'cmd_run')
-        return func(cfg)
+        try:
+            return func(cfg)
+        except config.Config.Error as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(1)
+
     return inner
 
 
