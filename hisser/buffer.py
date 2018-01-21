@@ -80,7 +80,7 @@ class Buffer:
             else:
                 self.future_points += 1
 
-    def tick(self, now=None):
+    def tick(self, force=False, now=None):
         now = int(now or time())
         size = (now - self.past_size * self.resolution - self.ts) // self.resolution
 
@@ -102,3 +102,7 @@ class Buffer:
 
         if size * len(self.data) > self.max_points:
             return self.flush(size)
+
+        if force:
+            size = (now - self.ts) // self.resolution
+            return self.flush(min(size, self.size))

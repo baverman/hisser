@@ -143,7 +143,7 @@ class Reader:
 
         blocks = self.block_list.blocks(res)
         start = start // res * res
-        stop = stop // res * res
+        stop = rstop = stop // res * res + res
 
         blocks = [b for b in blocks if b.end > start and b.start < stop]
         if not blocks:
@@ -179,9 +179,14 @@ class Reader:
     def add_rest_data_from_buffer(self, keys, start, stop, rstop, res, size, result):
         if not self.rpc_client:
             return (start, stop, res), result
-        cur_data = self.rpc_client.call('fetch', keys=[r.encode() for r in keys])
+
+        try:
+            cur_data = self.rpc_client.call('fetch', keys=[r.encode() for r in keys])
+        except Exception:
+            return (start, stop, res), result
+
         cur_result = {k.decode(): v for k, v in cur_data['result'].items()}
-        cur_slice = BlockInfo.make(cur_data['start'], cur_data['resolution'], cur_data['size'], 'tmp')
+        cur_slice = BlockInfo.make(cur_data['start'], cur_data['size'], cur_data['resolution'], 'tmp')
         ib = cur_slice.slice(stop, rstop)
         if ib:
             add = [None] * ((ib.end - stop) // res)
@@ -189,7 +194,7 @@ class Reader:
             for k, v in result.items():
                 v += add
                 if k in cur_result:
-                    v[s_idx: s_idx + ib.size] = cur_result[k]
+                    v[s_idx: s_idx + ib.size] = cur_result[k][ib.idx:ib.idx+ib.size]
             stop = ib.end
 
         return (start, stop, res), result
@@ -286,7 +291,10 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
             stop = norm_res(s_start + max_size * resolution, new_resolution)
             result.append((segment, s_start))
 
-        cur, b = b.slice(s_start).split(stop)
+        bs = b.slice(s_start)
+        if not bs:
+            break
+        cur, b = bs.split(stop)
         s_start = cur.end
         segment.append(cur)
         if s_start >= stop:

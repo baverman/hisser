@@ -139,9 +139,6 @@ class Config(dict):
 
     @cached_property
     def server(self):
-        for r in self.retentions:
-            os.makedirs(os.path.join(self.data_dir, str(r)), exist_ok=True)
-
         return server.Server(
             buf=self.buffer,
             storage=self.storage,

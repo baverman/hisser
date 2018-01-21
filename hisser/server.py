@@ -1,8 +1,15 @@
+import os
+import time
 import errno
 import socket
+import signal
+import fcntl
+import logging
 from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
 
 from .utils import run_in_fork, wait_childs, mloads, mdumps
+
+log = logging.getLogger(__name__)
 
 
 def rpc_fetch(srv, keys):
@@ -22,6 +29,8 @@ class Server:
         self.ready_to_merge = False
         self.flush_pids = set()
         self.merge_pid = None
+
+        self.time_to_exit = False
 
     def accept(self, sock, cdata):
         conn, _addr = sock.accept()
@@ -75,7 +84,6 @@ class Server:
         self.sel.unregister(conn)
         self.sel.register(conn, EVENT_WRITE, (self.link_write, {'buf': resp}))
 
-
     def process(self, data, end=False):
         lines = data.splitlines(True)
         next_chunk = b''
@@ -97,6 +105,28 @@ class Server:
                 buf.add(ts, name, value)
 
         return next_chunk
+
+    def signal_read(self, conn, cdata):
+        data = os.read(conn, 4096)
+        if data:
+            if data[-1] in (signal.SIGINT, signal.SIGTERM):
+                log.info('Cought exit signal')
+                self.time_to_exit = True
+
+    def setup_signals(self, sel):
+        self.pipe_r, pipe_w = os.pipe()
+        flags = fcntl.fcntl(pipe_w, fcntl.F_GETFL, 0)
+        flags = flags | os.O_NONBLOCK
+        fcntl.fcntl(pipe_w, fcntl.F_SETFL, flags)
+        signal.set_wakeup_fd(pipe_w)
+
+        sel.register(self.pipe_r, EVENT_READ, (self.signal_read, None))
+
+        def dummy(signal, frame):
+            pass
+
+        signal.signal(signal.SIGINT, dummy)
+        signal.signal(signal.SIGTERM, dummy)
 
     def listen(self):
         sel = self.sel = DefaultSelector()
@@ -123,6 +153,8 @@ class Server:
             link_sock.setblocking(False)
             sel.register(link_sock, EVENT_READ, (self.accept, {'handler': self.link_read}))
 
+        self.setup_signals(sel)
+
     def check_childs(self):
         if self.flush_pids or self.merge_pid:
             try:
@@ -139,6 +171,8 @@ class Server:
                     self.ready_to_merge = True
                 if self.merge_pid and self.merge_pid == pid:
                     self.merge_pid = None
+            return True
+        return False
 
     def check_loop(self):
         events = self.sel.select(3)
@@ -157,13 +191,17 @@ class Server:
             self.ready_to_merge = False
 
     def run(self):
-        try:
-            while True:
-                self.check_loop()
-                self.check_childs()
-                self.check_buffer()
-        except KeyboardInterrupt:
-            pass
+        while not self.time_to_exit:
+            self.check_loop()
+            self.check_childs()
+            self.check_buffer()
+
+        while self.check_childs():
+            time.sleep(1)
+
+        result = self.buf.tick(force=True)
+        if result:
+            self.storage.new_block(*result)
 
 
 class RpcClient:
