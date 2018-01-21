@@ -3,6 +3,7 @@ import os.path
 import pathlib
 
 from math import isnan
+from time import time
 from collections import namedtuple
 
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
@@ -219,6 +220,7 @@ class Storage:
     def do_housework(self):
         self.do_merge()
         self.do_downsample()
+        self.do_cleanup()
 
     def do_merge(self):
         block_list = BlockList(self.data_dir)
@@ -240,6 +242,15 @@ class Storage:
             segments = self.downsample_finder(res, blocks, new_res, start)
             if segments:
                 downsample(self.data_dir, new_res, segments, self.agg_rules)
+
+    def do_cleanup(self, now=None):
+        block_list = BlockList(self.data_dir)
+        now = now or time()
+        for res, ret in self.retentions:
+            for b in block_list.blocks(res):
+                if b.end < now - ret:
+                    os.unlink(b.path)
+                    log.info('Cleanup old block %s', b.path)
 
 
 def find_blocks_to_merge(resolution, blocks, *, max_size,
@@ -365,7 +376,6 @@ def merge(data_dir, res, paths):
                 row = data[k] = empty_row[:]
 
             if last_idx and idx <= last_idx:
-                print('Overlapped values')
                 values = [r if isnan(v) else v
                           for r, v in zip(row[idx:idx+b.size], values)]
             row[idx:idx+b.size] = values

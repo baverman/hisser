@@ -49,6 +49,13 @@ def cmd_downsample(cfg):
     cfg.storage.do_downsample()
 
 
+@cli.command('cleanup', help='remove old blocks')
+@common_options
+@config_aware
+def cmd_cleanup(cfg):
+    cfg.storage.do_cleanup()
+
+
 @cli.command('dump', help='dump content of block')
 @click.argument('block')
 @config_aware
