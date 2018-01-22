@@ -144,33 +144,35 @@ class Reader:
         start = start // res * res
         stop = rstop = stop // res * res + res
 
-        blocks = [b for b in blocks if b.end > start and b.start < stop]
-        if not blocks:
-            return (0, 0, 0), {}
-
-        blocks[0] = blocks[0].slice(start, stop)
-        blocks[-1] = blocks[-1].slice(start, stop)
-
         result = {}
-        start = blocks[0].start
-        size = (blocks[-1].end - start) // res
-        empty_row = [None] * size
-        ids2names = dict(zip(self.metric_names.get_ids(map(str.encode, names)), names))
-        for b in blocks:
-            r_start_idx = (b.start - start) // res
-            r_end_idx = r_start_idx + b.size
-            c_end_idx = b.idx + b.size
-            data = read_block(b.path, ids2names.keys())
-            for k, values in data.items():
-                try:
-                    row = result[ids2names[k]]
-                except KeyError:
-                    row = result[ids2names[k]] = empty_row[:]
+        blocks = [b for b in blocks if b.end > start and b.start < stop]
+        if blocks:
+            blocks[0] = blocks[0].slice(start, stop)
+            blocks[-1] = blocks[-1].slice(start, stop)
 
-                row[r_start_idx:r_end_idx] = [None if isnan(v) else v
-                                              for v in values[b.idx:c_end_idx]]
+            start = blocks[0].start
+            size = (blocks[-1].end - start) // res
+            empty_row = [None] * size
+            ids2names = dict(zip(self.metric_names.get_ids(map(str.encode, names)), names))
+            for b in blocks:
+                r_start_idx = (b.start - start) // res
+                r_end_idx = r_start_idx + b.size
+                c_end_idx = b.idx + b.size
+                data = read_block(b.path, ids2names.keys())
+                for k, values in data.items():
+                    try:
+                        row = result[ids2names[k]]
+                    except KeyError:
+                        row = result[ids2names[k]] = empty_row[:]
 
-        stop = start + size * res
+                    row[r_start_idx:r_end_idx] = [None if isnan(v) else v
+                                                  for v in values[b.idx:c_end_idx]]
+
+            stop = start + size * res
+        else:
+            stop = start
+            size = 0
+
         if not rest_res and rstop > stop:
             return self.add_rest_data_from_buffer(names, start, stop, rstop, res, size, result)
         return (start, stop, res), result
@@ -190,10 +192,13 @@ class Reader:
         if ib:
             add = [None] * ((ib.end - stop) // res)
             s_idx = size + (ib.start - stop) // res
-            for k, v in result.items():
-                v += add
-                if k in cur_result:
-                    v[s_idx: s_idx + ib.size] = cur_result[k][ib.idx:ib.idx+ib.size]
+            for name, values in cur_result.items():
+                row = result.get(name)
+                if row is None:
+                    row = result[name] = [None] * size + add
+                else:
+                    row += add
+                row[s_idx: s_idx + ib.size] = values[ib.idx:ib.idx+ib.size]
             stop = ib.end
 
         return (start, stop, res), result
@@ -216,6 +221,11 @@ class Storage:
             self.metric_index.add_tree(sorted(new_names))
         data = sorted((nid, list(v)) for (_, v), nid in zip(data, ids))
         return new_block(self.data_dir, data, ts, resolution, size, append=True)
+
+    def new_names(self, new_names):
+        new_names, _ids = self.metric_names.add(new_names)
+        if new_names:
+            self.metric_index.add_tree(sorted(new_names))
 
     def do_housework(self):
         self.do_merge()
@@ -379,7 +389,7 @@ def merge(data_dir, res, paths):
                 values = [r if isnan(v) else v
                           for r, v in zip(row[idx:idx+b.size], values)]
             row[idx:idx+b.size] = values
-        last_idx = idx + b.size
+        last_idx = max(last_idx or 0, idx + b.size)
 
     new_block(data_dir, sorted(data.items()),
               first.start, res, size, append=True, notify=False)

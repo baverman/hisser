@@ -181,10 +181,13 @@ class Server:
             callback(key.fileobj, data)
 
     def check_buffer(self):
-        result = self.buf.tick()
-        if result:
-            self.flush_pids.add(run_in_fork(self.storage.new_block, *result).pid)
+        data, new_names = self.buf.tick()
+        if data:
+            self.flush_pids.add(run_in_fork(self.storage.new_block, *data).pid)
             self.ready_to_merge = False
+
+        if new_names:
+            self.flush_pids.add(run_in_fork(self.storage.new_names, new_names).pid)
 
         if self.ready_to_merge and not self.merge_pid:
             self.merge_pid = run_in_fork(self.storage.do_housework).pid
@@ -199,9 +202,9 @@ class Server:
         while self.check_childs():
             time.sleep(1)
 
-        result = self.buf.tick(force=True)
-        if result:
-            self.storage.new_block(*result)
+        data, _new_names = self.buf.tick(force=True)
+        if data:
+            self.storage.new_block(*data)
 
 
 class RpcClient:

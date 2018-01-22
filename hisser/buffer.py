@@ -13,6 +13,7 @@ class Buffer:
         self.max_points = max_points
 
         self.data = {}
+        self.new_names = []
 
         self.empty_row = array('d', [NAN] * size)
         self.past_points = 0
@@ -49,7 +50,7 @@ class Buffer:
         try:
             return self.data[name]
         except KeyError:
-            pass
+            self.new_names.append(name)
         result = self.data[name] = self.empty_row[:]
         return result
 
@@ -67,6 +68,7 @@ class Buffer:
 
         self.ts += self.resolution * size
         self.last_size = 0
+        self.new_names[:] = []
         return result
 
     def add(self, ts, name, value, gen_metrics=True):
@@ -85,7 +87,7 @@ class Buffer:
         size = (now - self.past_size * self.resolution - self.ts) // self.resolution
 
         if size < 0:
-            return
+            return None, None
 
         if size != self.last_size:
             self.add(now, b'hisser.flushed-points', self.flushed_points, False)
@@ -95,14 +97,21 @@ class Buffer:
             self.last_size = size
 
         if size >= self.size:
-            return self.flush(self.size)
+            return self.flush(self.size), None
 
         if size >= self.flush_size:
-            return self.flush(self.flush_size)
+            return self.flush(self.flush_size), None
 
         if size * len(self.data) > self.max_points:
-            return self.flush(size)
+            return self.flush(size), None
 
         if force:
             size = (now - self.ts) // self.resolution
-            return self.flush(min(size, self.size))
+            return self.flush(min(size, self.size)), None
+
+        if size > 0 and self.new_names:
+            new_names = self.new_names[:]
+            self.new_names[:] = []
+            return None, new_names
+
+        return None, None
