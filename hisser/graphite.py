@@ -20,7 +20,6 @@ class Finder(BaseFinder):
         self.cfg = config.get_config({})
         self.reader = self.cfg.reader
         self.metric_index = self.cfg.metric_index
-        self.metric_names = self.cfg.metric_names
 
     @scream
     def find_nodes(self, query):
@@ -33,11 +32,11 @@ class Finder(BaseFinder):
     @scream
     def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
         metrics = self.metric_index.find_metrics_many(patterns)
-        metrics = {k: [r.decode() for r in v] for k, v in metrics.items()}
 
         names = set()
         for v in metrics.values():
             names.update(v)
+        names = sorted(names)
 
         time_info, data = self.reader.fetch(names, start_time, stop_time)
 
@@ -48,8 +47,8 @@ class Finder(BaseFinder):
                 if values:
                     result.append({
                         'pathExpression': query,
-                        'path': name,
-                        'name': name,
+                        'path': name.decode(),
+                        'name': name.decode(),
                         'time_info': time_info,
                         'values': values,
                     })

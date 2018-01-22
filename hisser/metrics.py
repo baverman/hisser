@@ -1,92 +1,15 @@
 from fnmatch import filter as fnfilter
-from struct import Struct
-
 
 import lmdb
 from .utils import MB, txn_cursor
-
-bigint_st = Struct('!Q')
-
-
-class MetricNames:
-    def __init__(self, path, map_size=500*MB):
-        self.env = lmdb.open(path, map_size, subdir=False, max_dbs=2)
-        self.names_db = self.env.open_db(b'names')
-        self.ids_db = self.env.open_db(b'ids')
-
-    def txn_allocate_ids(self, txn, count):
-        if count <= 0:
-            return None
-
-        v = txn.get(b'__id_counter__')
-        if v is None:
-            v = 0
-        else:
-            v = bigint_st.unpack(v)[0]
-
-        txn.put(b'__id_counter__', bigint_st.pack(v + count))
-        return v + 1
-
-    def allocate_ids(self, count):
-        with self.env.begin(write=True) as txn:
-            return self.txn_allocate_ids(txn, count)
-
-    def add(self, names, encoded=True):
-        if not encoded:
-            names = [r.encode() for r in names]
-
-        with self.env.begin(write=True) as txn:
-            ids = self.txn_get_ids(txn, names)
-
-            new_names = [n for n, nid in zip(names, ids) if nid is None]
-
-            start_id = self.txn_allocate_ids(txn, len(new_names))
-            new_items = []
-            for idx, (n, nid) in enumerate(zip(names, ids)):
-                if nid is None:
-                    nid = bigint_st.pack(start_id)
-                    new_items.append((n, nid))
-                    ids[idx] = nid
-                    start_id += 1
-
-            with txn.cursor(self.names_db) as cur:
-                cur.putmulti(new_items)
-
-            with txn.cursor(self.ids_db) as cur:
-                cur.putmulti((v, k) for k, v in new_items)
-
-        return new_names, ids
-
-    def get_ids(self, names):
-        with self.env.begin() as txn:
-            return self.txn_get_ids(txn, names)
-
-    def txn_get_ids(self, txn, names):
-        with txn.cursor(self.names_db) as cur:
-            return [cur.get(r) for r in names]
-
-    def get_names(self, ids):
-        with txn_cursor(self.env, db=self.ids_db) as cur:
-            return [cur.get(r) for r in ids]
 
 
 class MetricIndex:
     def __init__(self, path, map_size=500*MB):
         self.env = lmdb.open(path, map_size, subdir=False, max_dbs=2)
-        self.term_db = self.env.open_db(b'terms', dupsort=True)
         self.tree_db = self.env.open_db(b'tree', dupsort=True)
 
     def add(self, names):
-        with txn_cursor(self.env, True, self.term_db) as cur:
-            parts = group_parts(names)
-            cur.putmulti(parts)
-
-    def iter_terms(self):
-        with txn_cursor(self.env, False, self.term_db) as cur:
-            for k, v in cur:
-                yield k, v
-
-    def add_tree(self, names):
         tree = make_tree(names)
         with txn_cursor(self.env, True, self.tree_db) as cur:
             cur.putmulti(tree)
@@ -127,16 +50,6 @@ class MetricIndex:
         return self.find_metrics_many([query], True).get(query, [])
 
 
-def group_parts(names):
-    result = []
-    for name, nid in names.items():
-        for i, p in enumerate(name.split(b'.')):
-            prefix = bytes((i + 49,))
-            result.append((prefix + p, nid))
-    result.sort()
-    return result
-
-
 def make_tree(names):
     empty_row = [None] * 255
     prev = empty_row[:]
@@ -163,19 +76,3 @@ def query_parts(query):
         else:
             prefix.append(q)
     return b'.'.join(prefix), parts[len(prefix):]
-
-
-if __name__ == '__main__':
-    import sys, time
-    from .db import dump
-    # names = {k: bigint_st.pack(i) for i, (k, v) in enumerate(dump(sys.argv[1]))}
-    # for r in group_parts(names):
-    #     print(r)
-    mi = MetricIndex('tmp/metric.index')
-    # for fname in sys.argv[1:]:
-    #     names = (k for k, v in dump(fname))
-    #     mi.add_tree(names)
-    t = time.time()
-    for r in mi.find_tree(sys.argv[1]):
-        print(r)
-    print(time.time() - t)

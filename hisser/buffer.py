@@ -62,7 +62,7 @@ class Buffer:
 
         data = self.cut_data(size)
         if data:
-            result = (data, self.ts, self.resolution, size)
+            result = (data, self.ts, self.resolution, size, self.new_names[:])
         else:
             result = None
 

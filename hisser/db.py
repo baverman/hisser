@@ -127,10 +127,9 @@ class BlockList:
 
 
 class Reader:
-    def __init__(self, block_list, retentions, metric_names, rpc_client):
+    def __init__(self, block_list, retentions, rpc_client):
         self.block_list = block_list
         self.retentions = retentions
-        self.metric_names = metric_names
         self.rpc_client = rpc_client
 
     def fetch(self, names, start, stop, res=None, rest_res=None):
@@ -153,17 +152,16 @@ class Reader:
             start = blocks[0].start
             size = (blocks[-1].end - start) // res
             empty_row = [None] * size
-            ids2names = dict(zip(self.metric_names.get_ids(map(str.encode, names)), names))
             for b in blocks:
                 r_start_idx = (b.start - start) // res
                 r_end_idx = r_start_idx + b.size
                 c_end_idx = b.idx + b.size
-                data = read_block(b.path, ids2names.keys())
+                data = read_block(b.path, names)
                 for k, values in data.items():
                     try:
-                        row = result[ids2names[k]]
+                        row = result[k]
                     except KeyError:
-                        row = result[ids2names[k]] = empty_row[:]
+                        row = result[k] = empty_row[:]
 
                     row[r_start_idx:r_end_idx] = [None if isnan(v) else v
                                                   for v in values[b.idx:c_end_idx]]
@@ -182,11 +180,12 @@ class Reader:
             return (start, stop, res), result
 
         try:
-            cur_data = self.rpc_client.call('fetch', keys=[r.encode() for r in keys])
+            cur_data = self.rpc_client.call('fetch', keys=keys)
         except Exception:
+            log.exception('Error getting data')
             return (start, stop, res), result
 
-        cur_result = {k.decode(): v for k, v in cur_data['result'].items()}
+        cur_result = cur_data['result']
         cur_slice = BlockInfo.make(cur_data['start'], cur_data['size'], cur_data['resolution'], 'tmp')
         ib = cur_slice.slice(stop, rstop)
         if ib:
@@ -206,26 +205,23 @@ class Reader:
 
 class Storage:
     def __init__(self, data_dir, retentions, merge_finder, downsample_finder,
-                 agg_rules, metric_index, metric_names):
+                 agg_rules, metric_index):
         self.data_dir = data_dir
         self.retentions = retentions
         self.merge_finder = merge_finder
         self.downsample_finder = downsample_finder
         self.agg_rules = agg_rules
         self.metric_index = metric_index
-        self.metric_names = metric_names
 
-    def new_block(self, data, ts, resolution, size):
-        new_names, ids = self.metric_names.add([k for k, _ in data])
+    def new_block(self, data, ts, resolution, size, new_names):
         if new_names:
-            self.metric_index.add_tree(sorted(new_names))
-        data = sorted((nid, list(v)) for (_, v), nid in zip(data, ids))
+            self.metric_index.add(sorted(new_names))
+        data = sorted((k, list(v)) for k, v in data)
         return new_block(self.data_dir, data, ts, resolution, size, append=True)
 
     def new_names(self, new_names):
-        new_names, _ids = self.metric_names.add(new_names)
         if new_names:
-            self.metric_index.add_tree(sorted(new_names))
+            self.metric_index.add(sorted(new_names))
 
     def do_housework(self):
         self.do_merge()
