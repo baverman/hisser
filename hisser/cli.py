@@ -3,7 +3,7 @@ import sys
 from functools import wraps
 
 import click
-from . import config, db, defaults, agg
+from . import config, db, defaults, agg, metrics
 
 
 @click.group()
@@ -64,6 +64,15 @@ def cmd_dump(cfg):
         print(k, len(v), v)
 
 
+@cli.command('dump-index', help='dump content metric index')
+@click.argument('index')
+@config_aware
+def cmd_dump_index(cfg):
+    mi = metrics.MetricIndex(cfg.INDEX)
+    for k, v in mi.iter_tree():
+        print(k.decode(), v.decode())
+
+
 @cli.command('check', help='checks metadata')
 @click.argument('block', nargs=-1)
 @config_aware
@@ -103,12 +112,12 @@ def cmd_agg_method(cfg):
     print(rmethods[method])
 
 
-@cli.command('test')
-@common_options
-@config_aware
-def cmd_test(cfg):
-    # print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
-    print(cfg.rpc_client.call('fetch', keys=[b'random.diceroll', b'localhost.cpu.percent.idle', 'foo']))
+# @cli.command('test')
+# @common_options
+# @config_aware
+# def cmd_test(cfg):
+#     # print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
+#     print(cfg.rpc_client.call('fetch', keys=[b'random.diceroll', b'localhost.cpu.percent.idle', 'foo']))
 
 
 if __name__ == '__main__':
