@@ -16,6 +16,10 @@ def rpc_fetch(srv, keys):
     return srv.buf.get_data(keys)
 
 
+def rpc_drop_data(srv, keys):
+    return srv.buf.drop_data(keys)
+
+
 class Server:
     def __init__(self, buf, storage, carbon_host_port_tcp,
                  carbon_host_port_udp=None, link_host_port=None, backlog=100):

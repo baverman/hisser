@@ -6,6 +6,7 @@ from math import isnan
 from time import time
 from collections import namedtuple
 
+from .agg import is_not_nan
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
                     MB, page_size, norm_res, cursor)
 
@@ -203,19 +204,40 @@ class Reader:
         return (start, stop, res), result
 
 
+def nonemptyvalues(values):
+    return any(is_not_nan(r) for r in values)
+
+
 class Storage:
     def __init__(self, data_dir, retentions, merge_finder, downsample_finder,
-                 agg_rules, metric_index):
+                 agg_rules, metric_index, rpc_client):
         self.data_dir = data_dir
         self.retentions = retentions
         self.merge_finder = merge_finder
         self.downsample_finder = downsample_finder
         self.agg_rules = agg_rules
         self.metric_index = metric_index
+        self.rpc_client = rpc_client
 
-    def new_block(self, data, ts, resolution, size, new_names):
+    def new_block(self, data, ts, resolution, size, new_names, collected_metrics):
         if new_names:
             self.metric_index.add(sorted(new_names))
+
+        if collected_metrics / len(data) < 0.9:
+            log.info('Compact data in block %d -> %d', len(data), collected_metrics)
+            newdata = []
+            dropped_names = []
+            for k, v in data:
+                if any(is_not_nan(r) for r in v):
+                    newdata.append((k, v))
+                else:
+                    dropped_names.append(k)
+
+            try:
+                self.rpc_client.call('drop_data', keys=dropped_names)
+            except Exception:
+                log.exception('Error sending data to drop')
+
         data = sorted((k, list(v)) for k, v in data)
         return new_block(self.data_dir, data, ts, resolution, size, append=True)
 

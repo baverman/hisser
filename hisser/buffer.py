@@ -1,3 +1,4 @@
+from math import isnan
 from time import time
 from array import array
 
@@ -14,6 +15,7 @@ class Buffer:
 
         self.data = {}
         self.new_names = []
+        self.collected_metrics = 0
 
         self.empty_row = array('d', [NAN] * size)
         self.past_points = 0
@@ -36,6 +38,14 @@ class Buffer:
                 'result': result,
                 'resolution': self.resolution,
                 'size': self.size}
+
+    def drop_data(self, keys):
+        d = self.data
+        for k in keys:
+            try:
+                del d[k]
+            except KeyError:
+                pass
 
     def cut_data(self, size):
         result = []
@@ -62,11 +72,13 @@ class Buffer:
 
         data = self.cut_data(size)
         if data:
-            result = (data, self.ts, self.resolution, size, self.new_names[:])
+            result = (data, self.ts, self.resolution, size,
+                      self.new_names[:], self.collected_metrics)
         else:
             result = None
 
         self.ts += self.resolution * size
+        self.collected_metrics = 0
         self.last_size = 0
         self.new_names[:] = []
         return result
@@ -75,7 +87,10 @@ class Buffer:
         self.received_points += 1
         idx = (int(ts) - self.ts) // self.resolution
         try:
-            self.get_row(name)[idx] = value  # TODO: optional merge
+            row = self.get_row(name)
+            oldvalue = row[idx]
+            row[idx] = value
+            self.collected_metrics += isnan(oldvalue)
         except IndexError:
             if idx < 0:
                 self.past_points += 1

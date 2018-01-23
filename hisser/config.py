@@ -88,7 +88,8 @@ class Config(dict):
                           merge_finder=self.merge_finder,
                           downsample_finder=self.downsample_finder,
                           agg_rules=self.agg_rules,
-                          metric_index=self.metric_index)
+                          metric_index=self.metric_index,
+                          rpc_client=self.rpc_client)
 
     @cached_property
     def block_list(self):
