@@ -1,5 +1,7 @@
 import re
-from .utils import NAN, isnan
+from math import isnan
+
+from .utils import NAN
 
 
 def is_not_nan(num):

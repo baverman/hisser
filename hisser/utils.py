@@ -1,9 +1,10 @@
 import os
 import resource
+import array
 
 from time import time
 from functools import partial
-from math import isnan, ceil
+from math import ceil
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -106,3 +107,17 @@ def txn_cursor(env, write=False, db=None):
     with env.begin(write=write) as txn:
         with txn.cursor(db) as cur:
             yield cur
+
+
+def empty_rows(data, size):
+    nanbuf = array.array('d', [NAN] * size).tobytes()
+    for k, v in data:
+        if v.tobytes() == nanbuf:
+            yield k
+
+
+def non_empty_rows(data, size):
+    nanbuf = array.array('d', [NAN] * size).tobytes()
+    for k, v in data:
+        if v.tobytes() != nanbuf:
+            yield k, v

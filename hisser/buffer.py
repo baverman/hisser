@@ -1,8 +1,11 @@
+import logging
 from math import isnan
 from time import time
 from array import array
 
-from .utils import NAN
+from .utils import NAN, empty_rows
+
+log = logging.getLogger(__name__)
 
 
 class Buffer:
@@ -15,6 +18,7 @@ class Buffer:
 
         self.data = {}
         self.new_names = []
+        self.names_to_check = []
         self.collected_metrics = 0
 
         self.empty_row = array('d', [NAN] * size)
@@ -77,6 +81,10 @@ class Buffer:
         else:
             result = None
 
+        if not self.names_to_check and self.collected_metrics / len(self.data) < 0.9:
+            log.info('Compact data  %d -> %d', len(self.data), self.collected_metrics)
+            self.names_to_check = list(self.data)
+
         self.ts += self.resolution * size
         self.collected_metrics = 0
         self.last_size = 0
@@ -97,7 +105,20 @@ class Buffer:
             else:
                 self.future_points += 1
 
+    def check_and_drop_names(self):
+        if not self.names_to_check:
+            return
+
+        log.info('Check for empty names %d', len(self.names_to_check))
+        names = self.names_to_check[-10000:]
+        self.names_to_check = self.names_to_check[:-10000]
+        d = self.data
+        for n in empty_rows(((k, d[k]) for k in names), self.size):
+            del d[n]
+
     def tick(self, force=False, now=None):
+        self.check_and_drop_names()
+
         now = int(now or time())
         size = (now - self.past_size * self.resolution - self.ts) // self.resolution
 
