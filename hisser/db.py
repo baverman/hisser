@@ -1,14 +1,16 @@
 import logging
 import os.path
 import pathlib
+import heapq
 
 from math import isnan
 from time import time
 from collections import namedtuple
+from itertools import islice, groupby
 
 from .agg import is_not_nan
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
-                    MB, page_size, norm_res, cursor, non_empty_rows)
+                    MB, page_size, norm_res, cursor, non_empty_rows, open_env)
 
 log = logging.getLogger(__name__)
 
@@ -370,32 +372,38 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
 
 def merge(data_dir, res, paths):
     blocks = [get_info(p, res) for p in paths]
+    iters = [iter_dump(b.path, idx) for idx, b in enumerate(blocks)]
+
     first = blocks[0]
     last = blocks[-1]
     size = (last.end - first.start) // res
     empty_row = [NAN] * size
 
-    data = {}
-    for k, v in dump(first.path):
-        row = data[k] = empty_row[:]
-        row[:first.size] = v
+    max_size, max_block = max((os.path.getsize(b.path), b) for b in blocks)
+    map_size = page_size(max_size * size / max_block.size * 3)
 
+    slices = []
+    overlaps = []
     last_idx = None
-    for b in blocks[1:]:
+    for b in blocks:
         idx = (b.start - first.start) // res
-        for k, values in dump(b.path):
-            row = data.get(k)
-            if not row:
-                row = data[k] = empty_row[:]
-
-            if last_idx and idx <= last_idx:
-                values = [r if isnan(v) else v
-                          for r, v in zip(row[idx:idx+b.size], values)]
-            row[idx:idx+b.size] = values
+        slices.append(slice(idx, idx+b.size))
+        overlaps.append(last_idx and idx <= last_idx)
         last_idx = max(last_idx or 0, idx + b.size)
 
-    new_block(data_dir, sorted(data.items()),
-              first.start, res, size, append=True, notify=False)
+    stream = groupby(heapq.merge(*iters), lambda r: r[0])
+    def gen():
+        for k, g in stream:
+            row = empty_row[:]
+            for _, bn, values in g:
+                if overlaps[bn]:
+                    values = [r if isnan(v) else v
+                              for r, v in zip(row[slices[bn]], values)]
+                row[slices[bn]] = values
+            yield k, row
+
+    new_block(data_dir, gen(), first.start, res, size,
+              map_size=map_size, append=True, notify=False)
 
     for p in paths:
         os.unlink(p)
@@ -404,14 +412,15 @@ def merge(data_dir, res, paths):
     notify_blocks_changed(data_dir, res)
 
 
-def new_block(data_dir, data, timestamp, resolution, size, append=False, notify=True):
+def new_block(data_dir, data, timestamp, resolution, size,
+              map_size=None, append=False, notify=True):
     fname = '{}.{}.hdb'.format(timestamp, size)
     path = os.path.join(data_dir, str(resolution), fname)
     tmp_path = path + '.tmp'
 
-    size = estimate_data_size(data, size) * 2 + 100*MB
+    map_size = map_size or estimate_data_size(data, size) * 2 + 100*MB
     data = ((k, mdumps(v)) for k, v in data)
-    with cursor(tmp_path, page_size(size), lock=False) as cur:
+    with cursor(tmp_path, page_size(map_size), lock=False) as cur:
         cur.putmulti(data, overwrite=False, append=append)
 
     os.rename(tmp_path, path)
@@ -436,6 +445,26 @@ def dump(path):
     with cursor(path, readonly=True) as cur:
         for k, v in cur:
             yield k, mloads(v)
+
+
+def iter_dump(path, idx, size=10000):
+    k = None
+    while True:
+        with open_env(path, readonly=True) as env:
+            with env.begin(write=False) as txn:
+                with txn.cursor() as cur:
+                    if k:
+                        cur.set_key(k)
+                    else:
+                        cur.first()
+
+                    for k, v in islice(cur, size):
+                        yield k, idx, mloads(v)
+
+                    if cur.next():
+                        k = cur.key()
+                    else:
+                        break
 
 
 def notify_blocks_changed(data_dir, resolution):

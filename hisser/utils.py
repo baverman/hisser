@@ -85,8 +85,7 @@ class cached_property(object):
         return value
 
 
-@contextmanager
-def cursor(path, map_size=None, readonly=False, lock=None):
+def open_env(path, map_size=None, readonly=False, lock=None):
     lock = not readonly if lock is None else lock
     try:
         if map_size and map_size < 0:
@@ -95,9 +94,13 @@ def cursor(path, map_size=None, readonly=False, lock=None):
             map_size = map_size or map_size_for_path(path)
     except FileNotFoundError:
         map_size = 10*MB
-    with lmdb.open(path, map_size, subdir=False,
-                   readonly=readonly, lock=lock) as env:
-        with env.begin(write=not readonly) as txn:
+    return lmdb.open(path, map_size, subdir=False, readonly=readonly, lock=lock)
+
+
+@contextmanager
+def cursor(path, map_size=None, readonly=False, lock=None, buffers=False):
+    with open_env(path, map_size, readonly=readonly, lock=lock) as env:
+        with env.begin(write=not readonly, buffers=buffers) as txn:
             with txn.cursor() as cur:
                 yield cur
 
