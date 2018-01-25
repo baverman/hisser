@@ -64,7 +64,7 @@ def cmd_dump(cfg):
         print(k, len(v), v)
 
 
-@cli.command('dump-index', help='dump content metric index')
+@cli.command('dump-index', help='dump content of metric index')
 @click.argument('index')
 @config_aware
 def cmd_dump_index(cfg):

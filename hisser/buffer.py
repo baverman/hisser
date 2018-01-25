@@ -2,6 +2,7 @@ import logging
 from math import isnan
 from time import time
 from array import array
+from resource import getrusage, RUSAGE_SELF, RUSAGE_CHILDREN
 
 from .utils import NAN, empty_rows
 
@@ -91,7 +92,7 @@ class Buffer:
         self.new_names[:] = []
         return result
 
-    def add(self, ts, name, value, gen_metrics=True):
+    def add(self, ts, name, value):
         self.received_points += 1
         idx = (int(ts) - self.ts) // self.resolution
         try:
@@ -116,6 +117,26 @@ class Buffer:
         for n in empty_rows(((k, d[k]) for k in names), self.size):
             del d[n]
 
+    def add_internal_metrics(self, now):
+        self.add(now, b'hisser.flushed-points', self.flushed_points)
+        self.add(now, b'hisser.received-points', self.received_points)
+        self.add(now, b'hisser.past-points', self.past_points)
+        self.add(now, b'hisser.future-points', self.future_points)
+
+        r_main = getrusage(RUSAGE_SELF)
+        self.add(now, b'hisser.cpu.main.user', r_main.ru_utime)
+        self.add(now, b'hisser.cpu.main.sys', r_main.ru_stime)
+        self.add(now, b'hisser.mem.main.maxrss', r_main.ru_maxrss)
+        self.add(now, b'hisser.io.main.blocks_read', r_main.ru_inblock)
+        self.add(now, b'hisser.io.main.blocks_write', r_main.ru_oublock)
+
+        r_forks = getrusage(RUSAGE_CHILDREN)
+        self.add(now, b'hisser.cpu.forks.user', r_forks.ru_utime)
+        self.add(now, b'hisser.cpu.forks.sys', r_forks.ru_stime)
+        self.add(now, b'hisser.mem.forks.maxrss', r_forks.ru_maxrss)
+        self.add(now, b'hisser.io.forks.blocks_read', r_forks.ru_inblock)
+        self.add(now, b'hisser.io.forks.blocks_write', r_forks.ru_oublock)
+
     def tick(self, force=False, now=None):
         self.check_and_drop_names()
 
@@ -126,10 +147,7 @@ class Buffer:
             return None, None
 
         if size != self.last_size:
-            self.add(now, b'hisser.flushed-points', self.flushed_points, False)
-            self.add(now, b'hisser.received-points', self.received_points, False)
-            self.add(now, b'hisser.past-points', self.past_points, False)
-            self.add(now, b'hisser.future-points', self.future_points, False)
+            self.add_internal_metrics(now)
             self.last_size = size
 
         if size >= self.size:
