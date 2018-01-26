@@ -342,31 +342,37 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
 
 def downsample(data_dir, new_resolution, segments, agg_rules):
     for (blocks, s_start, s_stop) in segments:
+        iters = [iter_dump(b.path, idx) for idx, b in enumerate(blocks)]
+        stream = groupby(heapq.merge(*iters), lambda r: r[0])
+
         resolution = blocks[0].resolution
         s_size = (s_stop - s_start) // resolution
-        empty_row = [NAN] * s_size
-        data = {}
-
-        for b in blocks:
-            s_idx = (b.start - s_start) // resolution
-            s_to = s_idx + b.size
-            b_to = b.idx + b.size
-            for k, values in dump(b.path):
-                try:
-                    row = data[k]
-                except KeyError:
-                    row = data[k] = empty_row[:]
-                row[s_idx:s_to] = values[b.idx:b_to]
-
-        result = []
+        f_size = (s_stop - s_start) // new_resolution
         csize = new_resolution // resolution
-        for k, values in data.items():
-            agg_method = agg_rules.get_method(k, use_bin=True)
-            agg = [agg_method(values[k:k+csize]) for k in range(0, len(values), csize)]
-            result.append((k, agg))
+        empty_row = [NAN] * s_size
+        max_size, max_block = max((os.path.getsize(b.path), b) for b in blocks)
+        map_size = page_size(max_size * f_size / max_block.size * 3)
 
-        result.sort()
-        path = new_block(data_dir, result, s_start, new_resolution, s_size // csize, append=True)
+        s_slices = []
+        b_slices = []
+        for b in blocks:
+            idx = (b.start - s_start) // resolution
+            s_slices.append(slice(idx, idx+b.size))
+            b_slices.append(slice(b.idx, b.idx+b.size))
+
+
+        def gen():
+            for k, g in stream:
+                row = empty_row[:]
+                for _, bn, values in g:
+                    row[s_slices[bn]] = values[b_slices[bn]]
+
+                agg_method = agg_rules.get_method(k, use_bin=True)
+                agg = [agg_method(row[r:r+csize]) for r in range(0, s_size, csize)]
+                yield k, agg
+
+        path = new_block(data_dir, gen(), s_start, new_resolution, s_size // csize,
+                         map_size=map_size, append=True)
         log.info('Downsample %s', path)
 
 
