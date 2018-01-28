@@ -68,6 +68,10 @@ class Config(dict):
         url = urlsplit('tcp://' + param)
         return url.hostname, url.port or port
 
+    def ensure_dirs(self):
+        for r, _ in self.retentions:
+            os.makedirs(os.path.join(self.data_dir, str(r)), exist_ok=True)
+
     @cached_property
     def data_dir(self):
         return self.str('DATA_DIR')

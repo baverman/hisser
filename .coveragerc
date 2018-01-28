@@ -1,0 +1,2 @@
+[run]
+omit=hisser/cli.py

@@ -95,9 +95,7 @@ def cmd_check(cfg):
               help='host and port to listen carbon text protocol on udp, default is {}'.format(defaults.CARBON_BIND_UDP))
 @config_aware
 def cmd_run(cfg):
-    for r, _ in cfg.retentions:
-        os.makedirs(os.path.join(cfg.data_dir, str(r)), exist_ok=True)
-
+    cfg.ensure_dirs()
     server = cfg.server
     server.listen()
     server.run()

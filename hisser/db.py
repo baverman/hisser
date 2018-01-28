@@ -232,10 +232,10 @@ class Storage:
         if new_names:
             self.metric_index.add(sorted(new_names))
 
-    def do_housework(self):
+    def do_housework(self, now=None):
         self.do_merge()
         self.do_downsample()
-        self.do_cleanup()
+        self.do_cleanup(now)
 
     def do_merge(self):
         block_list = BlockList(self.data_dir)
@@ -351,7 +351,7 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
         csize = new_resolution // resolution
         empty_row = [NAN] * s_size
         max_size, max_block = max((os.path.getsize(b.path), b) for b in blocks)
-        map_size = page_size(max_size * f_size / max_block.size * 3)
+        map_size = page_size(max_size * f_size / max_block.size * 5)
 
         s_slices = []
         b_slices = []
@@ -359,7 +359,6 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
             idx = (b.start - s_start) // resolution
             s_slices.append(slice(idx, idx+b.size))
             b_slices.append(slice(b.idx, b.idx+b.size))
-
 
         def gen():
             for k, g in stream:

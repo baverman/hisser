@@ -29,7 +29,7 @@ class Buffer:
         self.flushed_points = 0
         self.last_size = 0
 
-        self.set_ts((now or time()) - self.past_size * resolution)
+        self.set_ts(now or time())
 
     def get_data(self, keys):
         result = {}
@@ -43,14 +43,6 @@ class Buffer:
                 'result': result,
                 'resolution': self.resolution,
                 'size': self.size}
-
-    def drop_data(self, keys):
-        d = self.data
-        for k in keys:
-            try:
-                del d[k]
-            except KeyError:
-                pass
 
     def cut_data(self, size):
         result = []
@@ -70,7 +62,7 @@ class Buffer:
         return result
 
     def set_ts(self, ts):
-        self.ts = int(ts) // self.resolution * self.resolution
+        self.ts = int(ts) // self.resolution * self.resolution - self.past_size * self.resolution
 
     def flush(self, size):
         self.flushed_points += len(self.data) * size
@@ -79,12 +71,12 @@ class Buffer:
         if data:
             result = (data, self.ts, self.resolution, size,
                       self.new_names[:], self.collected_metrics)
+
+            if not self.names_to_check and self.collected_metrics / len(self.data) < 0.9:
+                log.info('Compact data  %d -> %d', len(self.data), self.collected_metrics)
+                self.names_to_check = list(self.data)
         else:
             result = None
-
-        if not self.names_to_check and self.collected_metrics / len(self.data) < 0.9:
-            log.info('Compact data  %d -> %d', len(self.data), self.collected_metrics)
-            self.names_to_check = list(self.data)
 
         self.ts += self.resolution * size
         self.collected_metrics = 0
@@ -150,6 +142,10 @@ class Buffer:
             self.add_internal_metrics(now)
             self.last_size = size
 
+        if force:
+            size = (now - self.ts) // self.resolution
+            return self.flush(min(size, self.size)), None
+
         if size >= self.size:
             return self.flush(self.size), None
 
@@ -158,10 +154,6 @@ class Buffer:
 
         if size * len(self.data) > self.max_points:
             return self.flush(size), None
-
-        if force:
-            size = (now - self.ts) // self.resolution
-            return self.flush(min(size, self.size)), None
 
         if size > 0 and self.new_names:
             new_names = self.new_names[:]
