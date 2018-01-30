@@ -1,7 +1,6 @@
 from hisser import metrics as api
 
 
-
 def test_make_tree():
     result = list(api.make_tree([b'boo', b'foo']))
     assert result == [(b'.', b'boo'), (b'.', b'foo')]
@@ -34,6 +33,9 @@ def test_simple_find(tmpdir):
     mi = api.MetricIndex(fname)
 
     mi.add([b'boo', b'foo'])
+
+    result = list(mi.iter_tree())
+    assert result == [(b'.', b'boo'), (b'.', b'foo')]
 
     result = mi.find_metrics_many(['*'])
     assert result == {'*': [b'boo', b'foo']}
