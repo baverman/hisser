@@ -42,7 +42,7 @@ def map_size_for_path(path):
     return page_size(os.path.getsize(path))
 
 
-def overlap(range1, range2):
+def overlap(range1, range2):  # pragma: nocover
     left = max(range1[0], range2[0])
     right = min(range1[1], range2[1])
     result = right - left
@@ -56,7 +56,7 @@ Fork = namedtuple('Fork', 'pid start')
 
 def run_in_fork(func, *args, **kwargs):
     pid = os.fork()
-    if pid == 0:
+    if pid == 0:  # pragma: nocover
         try:
             func(*args, **kwargs)
         except:

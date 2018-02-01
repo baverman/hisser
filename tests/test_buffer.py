@@ -44,18 +44,18 @@ def test_simple():
     assert data is None
     assert 'm1' in new_names
 
-    (data, start, res, size, nn, cm), new_names = buf.tick(now=1100)
+    (data, start, res, size, nn), new_names = buf.tick(now=1100)
     d = dict(data)['m1']
-    assert (start, res, size, nn, cm) == (970, 10, 5, [], 31)
+    assert (start, res, size, nn) == (970, 10, 5, [])
     assert fnan(d) == [None, None, None, 1.0, 2.0]
 
-    (data, start, res, size, nn, cm), new_names = buf.tick(now=1100 + 300)
+    (data, start, res, size, nn), new_names = buf.tick(now=1100 + 300)
     d = dict(data)['m1']
-    assert (start, res, size, nn, cm) == (1020, 10, 30, [], 0)
+    assert (start, res, size, nn) == (1020, 10, 30, [])
     assert fnan(d) == [3.0] + [None] * 29
 
-    (data, start, res, size, nn, cm), new_names = buf.tick(force=True, now=1500)
+    (data, start, res, size, nn), new_names = buf.tick(force=True, now=1500)
     assert 'm1' not in dict(data)
-    assert (start, res, size, cm) == (1320, 10, 18, 14)
+    assert (start, res, size) == (1320, 10, 18)
     assert nn
     assert fnan(d) == [3.0] + [None] * 29

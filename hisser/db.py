@@ -1,14 +1,12 @@
 import logging
 import os.path
-import pathlib
 import heapq
 
 from math import isnan
 from time import time
-from collections import namedtuple
 from itertools import islice, groupby
 
-from .agg import is_not_nan
+from .blocks import Block, BlockList, notify_blocks_changed, get_info
 from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
                     MB, page_size, norm_res, cursor, non_empty_rows, open_env)
 
@@ -17,116 +15,6 @@ log = logging.getLogger(__name__)
 
 def abs_ratio(a, b):
     return max(a, b) / (min(a, b) or 1)
-
-
-class BlockInfo(namedtuple('BlockInfo', 'start end idx size resolution path')):
-    @staticmethod
-    def make(start, size, resolution, path):
-        return BlockInfo(start, start + size * resolution, 0, size, resolution, path)
-
-    def split(self, ts):
-        return BlockSlice.make(self).split(ts)
-
-    def slice(self, start, stop=None):
-        return BlockSlice.make(self).slice(start, stop)
-
-
-class BlockSlice(namedtuple('BlockSlice', 'start end idx size resolution path bstart')):
-    @staticmethod
-    def make(block):
-        return BlockSlice(block.start, block.end, 0, block.size,
-                          block.resolution, block.path, block.start)
-
-    def split(self, ts):
-        if ts <= self.start:
-            return None, self
-        elif ts >= self.end:
-            return self, None
-
-        return self.slice_to(ts), self.slice_from(ts)
-
-    def slice(self, start, stop=None):
-        result = self
-        if start is not None:
-            result = result.slice_from(start)
-        if stop is not None:
-            result = result and result.slice_to(stop)
-        return result
-
-    def slice_from(self, ts):
-        if ts <= self.start:
-            return self
-
-        if ts >= self.end:
-            return None
-
-        start = ts
-        end = self.end
-        return self._replace(start=start, end=end,
-                             idx=(start - self.bstart) // self.resolution,
-                             size=(end - start) // self.resolution)
-
-    def slice_to(self, ts):
-        if ts <= self.start:
-            return None
-
-        if ts >= self.end:
-            return self
-
-        start = self.start
-        end = ts
-        return self._replace(start=start, end=end,
-                             idx=(start - self.bstart) // self.resolution,
-                             size=(end - start) // self.resolution)
-
-
-class BlockList:
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
-        self._last_state = {}
-        self._blocks = {}
-
-    def check(self, resolution, refresh):
-        if refresh or resolution not in self._last_state:
-            self.rescan(resolution)
-            self._last_state[resolution] = 0
-            return
-
-        try:
-            new_state = os.path.getmtime(os.path.join(self.data_dir,
-                                                      str(resolution), 'blocks.state'))
-        except OSError:
-            new_state = 0
-
-        if self._last_state[resolution] < new_state:
-            self._last_state[resolution] = new_state
-            self.rescan(resolution)
-
-    def blocks(self, resolution, refresh=False):
-        self.check(resolution, refresh)
-        return self._blocks[resolution]
-
-    def rescan(self, resolution):
-        blocks = self._blocks[resolution] = []
-        data_path = os.path.join(self.data_dir, str(resolution))
-
-        try:
-            entries = os.scandir(data_path)
-        except FileNotFoundError:
-            os.makedirs(data_path, exist_ok=True)
-            entries = []
-
-        for e in entries:
-            if not e.name.endswith('.hdb') or not e.is_file():
-                continue
-            try:
-                info = get_info(e.path, resolution)
-            except ValueError:
-                pass
-            else:
-                blocks.append(info)
-
-        blocks.sort()
 
 
 class Reader:
@@ -189,41 +77,38 @@ class Reader:
             return (start, stop, res), result
 
         cur_result = cur_data['result']
-        cur_slice = BlockInfo.make(cur_data['start'], cur_data['size'], cur_data['resolution'], 'tmp')
+        cur_slice = Block.make(cur_data['start'], cur_data['size'],
+                               cur_data['resolution'], 'tmp')
         ib = cur_slice.slice(stop, rstop)
         if ib:
             add = [None] * ((ib.end - stop) // res)
             s_idx = size + (ib.start - stop) // res
-            for name, values in cur_result.items():
+            for name in keys:
                 row = result.get(name)
                 if row is None:
                     row = result[name] = [None] * size + add
                 else:
                     row += add
-                row[s_idx: s_idx + ib.size] = values[ib.idx:ib.idx+ib.size]
+                values = cur_result.get(name)
+                if values is not None:
+                    row[s_idx: s_idx + ib.size] = values[ib.idx:ib.idx+ib.size]
             stop = ib.end
 
         return (start, stop, res), result
 
 
-def nonemptyvalues(values):
-    return any(is_not_nan(r) for r in values)
-
-
 class Storage:
     def __init__(self, data_dir, retentions, merge_finder, downsample_finder,
-                 agg_rules, metric_index, rpc_client):
+                 agg_rules, metric_index):
         self.data_dir = data_dir
         self.retentions = retentions
         self.merge_finder = merge_finder
         self.downsample_finder = downsample_finder
         self.agg_rules = agg_rules
         self.metric_index = metric_index
-        self.rpc_client = rpc_client
 
-    def new_block(self, data, ts, resolution, size, new_names, collected_metrics):
-        if new_names:
-            self.metric_index.add(sorted(new_names))
+    def new_block(self, data, ts, resolution, size, new_names):
+        self.new_names(new_names)
         data = sorted((k, list(v)) for k, v in non_empty_rows(data, size))
         if data:
             return new_block(self.data_dir, data, ts, resolution, size, append=True)
@@ -280,7 +165,7 @@ def find_blocks_to_merge(resolution, blocks, *, max_size,
         if b2.start - b1.end > max_gap_size * resolution:
             continue
 
-        if (b2.end - b1.start) // resolution >= max_size:
+        if (b2.end - b1.start) // resolution > max_size:
             continue
 
         if max(b1.size, b2.size) / min(b1.size, b2.size) > ratio:
@@ -298,7 +183,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
     start = norm_res(start, new_resolution)
     result = []
     segment = None
-    it = (b for b in blocks if b.end > start)
+    it = (r for r in blocks if r.end > start)
     b = None
     while True:
         b = b or next(it, None)
@@ -317,6 +202,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
 
         bs = b.slice(s_start)
         if not bs:
+            print('@@@@@@@', start, s_start, b, blocks)
             break
         cur, b = bs.split(stop)
         s_start = cur.end
@@ -446,7 +332,7 @@ def read_block(path, keys):
     return result
 
 
-def dump(path):
+def dump(path):  # pragma: nocover
     with cursor(path, readonly=True) as cur:
         for k, v in cur:
             yield k, mloads(v)
@@ -470,14 +356,3 @@ def iter_dump(path, idx, size=10000):
                         k = cur.key()
                     else:
                         break
-
-
-def notify_blocks_changed(data_dir, resolution):
-    path = os.path.join(data_dir, str(resolution), 'blocks.state')
-    pathlib.Path(path).touch(exist_ok=True)
-
-
-def get_info(path, res=0):
-    ts, size, *rest = os.path.basename(path).split('.')
-    ts, size = int(ts), int(size)
-    return BlockInfo.make(ts, size, res, path)

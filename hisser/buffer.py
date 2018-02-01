@@ -69,8 +69,7 @@ class Buffer:
 
         data = self.cut_data(size)
         if data:
-            result = (data, self.ts, self.resolution, size,
-                      self.new_names[:], self.collected_metrics)
+            result = (data, self.ts, self.resolution, size, self.new_names[:])
 
             if not self.names_to_check and self.collected_metrics / len(self.data) < 0.9:
                 log.info('Compact data  %d -> %d', len(self.data), self.collected_metrics)

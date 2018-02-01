@@ -128,7 +128,7 @@ class Server:
         signal.signal(signal.SIGINT, dummy)
         signal.signal(signal.SIGTERM, dummy)
 
-    def listen(self):
+    def listen(self, signals=True):
         sel = self.sel = DefaultSelector()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -153,7 +153,8 @@ class Server:
             link_sock.setblocking(False)
             sel.register(link_sock, EVENT_READ, (self.accept, {'handler': self.link_read}))
 
-        self.setup_signals(sel)
+        if signals:
+            self.setup_signals(sel)
 
     def check_childs(self):
         if self.flush_pids or self.merge_pid:

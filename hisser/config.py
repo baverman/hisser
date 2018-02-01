@@ -2,7 +2,7 @@ import os
 import logging.config
 from urllib.parse import urlsplit
 
-from . import defaults, db, buffer as hbuffer, agg, server, metrics
+from . import defaults, db, buffer as hbuffer, agg, server, metrics, blocks
 from .utils import cached_property
 
 TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
@@ -69,8 +69,7 @@ class Config(dict):
         return url.hostname, url.port or port
 
     def ensure_dirs(self):
-        for r, _ in self.retentions:
-            os.makedirs(os.path.join(self.data_dir, str(r)), exist_ok=True)
+        blocks.ensure_block_dirs(self.data_dir, self.retentions)
 
     @cached_property
     def data_dir(self):
@@ -92,8 +91,7 @@ class Config(dict):
                           merge_finder=self.merge_finder,
                           downsample_finder=self.downsample_finder,
                           agg_rules=self.agg_rules,
-                          metric_index=self.metric_index,
-                          rpc_client=self.rpc_client)
+                          metric_index=self.metric_index)
 
     @cached_property
     def block_list(self):
