@@ -10,12 +10,14 @@ log = logging.getLogger(__name__)
 
 
 class Buffer:
-    def __init__(self, size, resolution, flush_size, past_size, max_points, now=None):
+    def __init__(self, size, resolution, flush_size, past_size, max_points,
+                 compact_ratio, now=None):
         self.size = size
         self.resolution = resolution
         self.flush_size = flush_size
         self.past_size = past_size
         self.max_points = max_points
+        self.compact_ratio = compact_ratio
 
         self.data = {}
         self.new_names = []
@@ -71,8 +73,9 @@ class Buffer:
         if data:
             result = (data, self.ts, self.resolution, size, self.new_names[:])
 
-            if not self.names_to_check and self.collected_metrics / len(self.data) < 0.9:
-                log.info('Compact data  %d -> %d', len(self.data), self.collected_metrics)
+            estimated_metrics =  self.collected_metrics // size
+            if not self.names_to_check and estimated_metrics / len(self.data) < self.compact_ratio:
+                log.info('Compact data %d -> %d', len(self.data), estimated_metrics)
                 self.names_to_check = list(self.data)
         else:
             result = None
@@ -141,6 +144,7 @@ class Buffer:
             self.add_internal_metrics(now)
             self.last_size = size
 
+        print(size, len(self.data))
         if force:
             size = (now - self.ts) // self.resolution
             return self.flush(min(size, self.size)), None

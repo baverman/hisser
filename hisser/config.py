@@ -103,7 +103,7 @@ class Config(dict):
         max_gap_size = self.int('MERGE_MAX_GAP_SIZE')
         ratio = self.float('MERGE_RATIO')
 
-        def finder(resolution, blocks):
+        def finder(resolution, blocks):  # pragma: nocover
             return db.find_blocks_to_merge(resolution, blocks, max_size=max_size,
                                            max_gap_size=max_gap_size, ratio=ratio)
         return finder
@@ -114,7 +114,7 @@ class Config(dict):
         min_size = self.int('DOWNSAMPLE_MIN_SIZE')
         max_gap_size = self.int('MERGE_MAX_GAP_SIZE')
 
-        def finder(resolution, blocks, new_resolution, start=0):
+        def finder(resolution, blocks, new_resolution, start=0):  # pragma: nocover
             return db.find_blocks_to_downsample(
                 resolution, blocks, new_resolution,
                 max_size=max_size, min_size=min_size,
@@ -130,7 +130,8 @@ class Config(dict):
                               resolution=min_res,
                               flush_size=self.int('BUFFER_FLUSH_SIZE'),
                               past_size=self.int('BUFFER_PAST_SIZE'),
-                              max_points=self.int('BUFFER_MAX_POINTS'))
+                              max_points=self.int('BUFFER_MAX_POINTS'),
+                              compact_ratio=self.float('BUFFER_COMPACT_RATIO'))
 
     @cached_property
     def reader(self):
@@ -159,7 +160,7 @@ class Config(dict):
     def metric_index(self):
         return metrics.MetricIndex(os.path.join(self.data_dir, 'metric.index'))
 
-    def setup_logging(self, daemon=True):
+    def setup_logging(self, daemon=True):  # pragma: nocover
         if daemon and self.LOGGING:
             logging.config.dictConfig(self.LOGGING)
         else:

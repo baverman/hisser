@@ -1,23 +1,26 @@
+import logging
+
 from graphite.node import LeafNode, BranchNode
 from graphite.finders.utils import BaseFinder
 
 from . import config
 
+log = logging.getLogger('hisser.graphite')
 
-def scream(fn):
+
+def scream(fn):  # pragma: nocover
     def inner(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
-        except:
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            log.exception('Error getting data from hisser')
             raise
     return inner
 
 
 class Finder(BaseFinder):
-    def __init__(self):
-        self.cfg = config.get_config({})
+    def __init__(self, cfg=None):
+        self.cfg = cfg or config.get_config({})
         self.reader = self.cfg.reader
         self.metric_index = self.cfg.metric_index
 
@@ -38,7 +41,7 @@ class Finder(BaseFinder):
             names.update(v)
         names = sorted(names)
 
-        time_info, data = self.reader.fetch(names, start_time, stop_time)
+        time_info, data = self.reader.fetch(names, int(start_time), int(stop_time))
 
         result = []
         for query, names in metrics.items():

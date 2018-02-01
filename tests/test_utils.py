@@ -29,3 +29,14 @@ def test_run_in_fork(tmpdir):
         if pid == f.pid:
             break
         time.sleep(0.1)
+
+
+def test_open_env(tmpdir):
+    with utils.open_env(str(tmpdir.join('boo'))) as env:
+        assert env.info()['map_size'] == 10485760
+
+    with utils.open_env(str(tmpdir.join('boo'))) as env:
+        assert env.info()['map_size'] == 8192
+
+    with utils.open_env(str(tmpdir.join('boo')), map_size=-8192) as env:
+        assert env.info()['map_size'] == 16384

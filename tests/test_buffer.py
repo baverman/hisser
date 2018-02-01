@@ -7,13 +7,24 @@ def fnan(seq):
 
 
 def test_empty_buffer():
-    buf = Buffer(30, 10, 5, 3, 5000, now=1000)
+    buf = Buffer(30, 10, 5, 3, 5000, 0.9, now=1000)
     result = buf.flush(5)
     assert result is None
 
 
+def test_flush_max_points():
+    buf = Buffer(30, 10, 30, 3, 10, 0.9, now=1000)
+    for i in range(5):
+        buf.add(1000, f'm{i}', 1)
+    for i in range(5):
+        buf.add(1010, f'm{i}', 1)
+
+    data, new_names = buf.tick(now=1030)
+    assert data
+
+
 def test_simple():
-    buf = Buffer(30, 10, 5, 3, 5000, now=1000)
+    buf = Buffer(30, 10, 5, 3, 5000, 0.9, now=1000)
     buf.add(1000, 'm1', 1)
     buf.add(1010, 'm1', 2)
     buf.add(1020, 'm1', 3)

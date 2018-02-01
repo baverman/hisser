@@ -54,8 +54,8 @@ def test_find_blocks_to_merge_simple():
     result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=1.1)
     assert not result
 
-    result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=2)
-    assert result == [('path1000', 'path1100')]
+    result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=2.1)
+    assert result == [['path1100', 'path1300']]
 
 
 def test_find_blocks_to_merge_gaps():
@@ -70,7 +70,7 @@ def test_find_blocks_to_merge_max_size():
     assert not result
 
     result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=1.1)
-    assert result == [('path1000', 'path1500')]
+    assert result == [['path1000', 'path1500']]
 
 
 def test_storage_read_write(tmpdir):
@@ -176,9 +176,10 @@ def test_storage_house_work(tmpdir):
 
     storage.do_housework(1200)
 
-    b1, b2 = bl.blocks(10)
+    b1, b2, b3 = bl.blocks(10)
     assert b1.start == 1000
-    assert b2.start == 1100
+    assert b2.start == 1050
+    assert b3.start == 1100
 
     b1, = bl.blocks(20)
     assert b1.start == 1000
@@ -186,9 +187,9 @@ def test_storage_house_work(tmpdir):
     assert b1.size == 10
 
     storage.do_housework(1450)
-    assert not bl.blocks(10)
+    assert not bl.blocks(10, refresh=True)
 
-    b1, = bl.blocks(20)
+    b1, = bl.blocks(20, refresh=True)
 
 
 def test_iter_dump(tmpdir):

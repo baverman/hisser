@@ -69,7 +69,7 @@ class Server:
             cdata['buf'] = buf + data
             return
 
-        if not buf:
+        if not buf:  # pragma: nocover
             self.sel.unregister(conn)
             conn.close()
             return
@@ -106,14 +106,14 @@ class Server:
 
         return next_chunk
 
-    def signal_read(self, conn, cdata):
+    def signal_read(self, conn, cdata):  # pragma: nocover
         data = os.read(conn, 4096)
         if data:
             if data[-1] in (signal.SIGINT, signal.SIGTERM):
                 log.info('Cought exit signal')
                 self.time_to_exit = True
 
-    def setup_signals(self, sel):
+    def setup_signals(self, sel):  # pragma: nocover
         self.pipe_r, pipe_w = os.pipe()
         flags = fcntl.fcntl(pipe_w, fcntl.F_GETFL, 0)
         flags = flags | os.O_NONBLOCK
@@ -153,14 +153,14 @@ class Server:
             link_sock.setblocking(False)
             sel.register(link_sock, EVENT_READ, (self.accept, {'handler': self.link_read}))
 
-        if signals:
+        if signals:  # pragma: nocover
             self.setup_signals(sel)
 
     def check_childs(self):
         if self.flush_pids or self.merge_pid:
             try:
                 pid, _exit = wait_childs()
-            except OSError as e:
+            except OSError as e:  # pragma: nocover
                 if e.errno == errno.ECHILD:
                     self.flush_pids.clear()
                     self.merge_pid = None
@@ -181,8 +181,8 @@ class Server:
             callback, data = key.data
             callback(key.fileobj, data)
 
-    def check_buffer(self):
-        data, new_names = self.buf.tick()
+    def check_buffer(self, now=None):
+        data, new_names = self.buf.tick(now=now)
         if data:
             self.flush_pids.add(run_in_fork(self.storage.new_block, *data).pid)
             self.ready_to_merge = False
@@ -200,7 +200,7 @@ class Server:
             self.check_childs()
             self.check_buffer()
 
-        while self.check_childs():
+        while self.check_childs():  # pragma: nocover
             time.sleep(1)
 
         data, _new_names = self.buf.tick(force=True)

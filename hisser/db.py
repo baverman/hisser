@@ -126,9 +126,9 @@ class Storage:
         block_list = BlockList(self.data_dir)
         for res, _ in self.retentions:
             blocks = block_list.blocks(res)
-            for p1, p2 in self.merge_finder(res, blocks):
-                log.info('Merge %s %s', p1, p2)
-                merge(self.data_dir, res, [p1, p2])
+            for s in self.merge_finder(res, blocks):
+                log.info('Merge %r', s)
+                merge(self.data_dir, res, s)
 
     def do_downsample(self):
         block_list = BlockList(self.data_dir)
@@ -151,30 +151,50 @@ class Storage:
                 if b.end < now - ret:
                     os.unlink(b.path)
                     log.info('Cleanup old block %s', b.path)
+            notify_blocks_changed(self.data_dir, res)
 
 
-def find_blocks_to_merge(resolution, blocks, *, max_size,
-                         max_gap_size, ratio):
+def find_blocks_to_merge(resolution, blocks, *, max_size, max_gap_size, ratio):
     result = []
-    found = False
-    for b1, b2 in zip(blocks[:-1], blocks[1:]):
-        if found:
-            found = False
-            continue
+    segment = []
+    it = iter(blocks)
+    b = None
+    while True:
+        b = b or next(it, None)
+        if not b:
+            break
 
-        if b2.start - b1.end > max_gap_size * resolution:
-            continue
+        if not segment:
+            sstart = send = b.start
+        else:
+            start = segment[0].start
+            send = segment[-1].end
 
-        if (b2.end - b1.start) // resolution > max_size:
-            continue
+        is_ok = True
+        if is_ok and b.start - send > max_gap_size * resolution:
+            is_ok = False
 
-        if max(b1.size, b2.size) / min(b1.size, b2.size) > ratio:
-            continue
+        if is_ok and (b.end - sstart) // resolution > max_size:
+            is_ok = False
 
-        found = True
-        result.append((b1.path, b2.path))
+        if is_ok:
+            segment.append(b)
+            b = None
+        elif segment:
+            result.append(segment)
+            segment = []
 
-    return result
+    if segment:
+        result.append(segment)
+
+    if result and len(result[-1]) > 1:
+        b1, b2 = result[-1][-2:]
+        if max(b1.size, b2.size) / min(b1.size, b2.size) < ratio:
+            result[-1] = [b1, b2]
+        else:
+            result[-1] = []
+
+    return [[b.path for b in s] for s in result if len(s) > 1]
 
 
 def find_blocks_to_downsample(resolution, blocks, new_resolution,
@@ -201,8 +221,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
             result.append((segment, s_start))
 
         bs = b.slice(s_start)
-        if not bs:
-            print('@@@@@@@', start, s_start, b, blocks)
+        if not bs:  # pragma: nocover
             break
         cur, b = bs.split(stop)
         s_start = cur.end
