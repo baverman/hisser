@@ -1,6 +1,11 @@
-import os
+import os.path
 import pathlib
 from collections import namedtuple
+
+try:
+    from os import scandir
+except ImportError:  # pragma: nocover
+    from scandir import scandir
 
 
 class Block(namedtuple('Block', 'start end idx size resolution path')):
@@ -94,7 +99,7 @@ class BlockList:
         data_path = os.path.join(self.data_dir, str(resolution))
 
         try:
-            entries = os.scandir(data_path)
+            entries = scandir(data_path)
         except FileNotFoundError:
             os.makedirs(data_path, exist_ok=True)
             entries = []

@@ -194,7 +194,7 @@ def test_storage_house_work(tmpdir):
 
 def test_iter_dump(tmpdir):
     data_dir = str(tmpdir)
-    data = [(b'm%06d' % r, [1, 2, 3, 4, 5]) for r in range(1000)]
+    data = [('m{:06}'.format(r).encode(), [1, 2, 3, 4, 5]) for r in range(1000)]
     blocks.ensure_block_dirs(data_dir, [(10, 10)])
     db.new_block(data_dir, data, 1000, 10, 5, append=True)
 

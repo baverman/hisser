@@ -144,7 +144,6 @@ class Buffer:
             self.add_internal_metrics(now)
             self.last_size = size
 
-        print(size, len(self.data))
         if force:
             size = (now - self.ts) // self.resolution
             return self.flush(min(size, self.size)), None

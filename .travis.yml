@@ -1,0 +1,7 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+install: "GRAPHITE_NO_PREFIX=1 pip install pytest-cov lmdb==0.93 msgpack==0.5.1 graphite-web==1.1.1 scandir"
+script: py.test

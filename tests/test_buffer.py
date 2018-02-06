@@ -15,9 +15,9 @@ def test_empty_buffer():
 def test_flush_max_points():
     buf = Buffer(30, 10, 30, 3, 10, 0.9, now=1000)
     for i in range(5):
-        buf.add(1000, f'm{i}', 1)
+        buf.add(1000, 'm{}'.format(i), 1)
     for i in range(5):
-        buf.add(1010, f'm{i}', 1)
+        buf.add(1010, 'm{}'.format(i), 1)
 
     data, new_names = buf.tick(now=1030)
     assert data

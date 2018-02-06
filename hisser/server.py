@@ -77,7 +77,7 @@ class Server:
         try:
             req = mloads(buf)
             method = req.pop('method')
-            resp = mdumps(globals()[f'rpc_{method}'](self, **req))
+            resp = mdumps(globals()['rpc_{}'.format(method)](self, **req))
         except Exception as e:
             resp = mdumps({'error': str(e)})
 

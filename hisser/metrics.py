@@ -38,9 +38,9 @@ class MetricIndex:
                         candidates.extend(to_match[m])
 
                 if check:
-                    matched_metrics[q] = [(not cur.set_key(c), c) for c in candidates]
+                    matched_metrics[q] = [(not cur.set_key(c), c) for c in sorted(candidates)]
                 else:
-                    matched_metrics[q] = candidates
+                    matched_metrics[q] = sorted(candidates)
             return matched_metrics
 
     def find_metrics(self, query):

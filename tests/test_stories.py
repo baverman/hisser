@@ -33,7 +33,7 @@ def send_udp(data):
 
 
 def test_simple(tmpdir):
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'graphite_local_settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.graphite_local_settings'
     import django
     django.setup()
 
@@ -58,7 +58,9 @@ def test_simple(tmpdir):
     assert 'missing' in result['error']
 
     cfg.server.check_buffer(start + 60)
-    time.sleep(0.2)
+
+    while cfg.server.check_childs():
+        time.sleep(0.1)
 
     f = graphite.Finder(cfg)
 
