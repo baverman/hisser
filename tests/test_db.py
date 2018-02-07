@@ -8,6 +8,14 @@ def make_block(ts, resolution, size):
     return blocks.Block.make(ts, size, resolution, 'path{}'.format(ts))
 
 
+def make_block_series(ts, resolution, *sizes):
+    result = []
+    for s in sizes:
+        result.append(make_block(ts, resolution, s))
+        ts += s * resolution
+    return result
+
+
 def get_segments(result):
     return [[start, stop] + [(b.start, b.end) for b in s]
             for s, start, stop in result]
@@ -50,12 +58,16 @@ def test_find_downsample_mixed_shifts():
 
 
 def test_find_blocks_to_merge_simple():
-    blocks = [make_block(1000, 10, 10), make_block(1100, 10, 20), make_block(1300, 10, 10)]
+    blocks = make_block_series(1000, 10, 10, 20, 10)
     result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=1.1)
     assert not result
 
     result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=2.1)
-    assert result == [['path1100', 'path1300']]
+    assert result == [['path1000', 'path1100']]
+
+    blocks = make_block_series(1000, 10, 10, 10, 20, 20, 10)
+    result = db.find_blocks_to_merge(10, blocks, max_size=100, max_gap_size=10, ratio=1.4)
+    assert result == [['path1000', 'path1100'], ['path1200', 'path1400']]
 
 
 def test_find_blocks_to_merge_gaps():
@@ -178,8 +190,8 @@ def test_storage_house_work(tmpdir):
 
     b1, b2, b3 = bl.blocks(10)
     assert b1.start == 1000
-    assert b2.start == 1050
-    assert b3.start == 1100
+    assert b2.start == 1100
+    assert b3.start == 1150
 
     b1, = bl.blocks(20)
     assert b1.start == 1000

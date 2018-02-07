@@ -5,3 +5,4 @@
 /test.py
 /bench.py
 /.coverage
+/.pytest_cache

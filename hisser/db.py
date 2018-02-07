@@ -154,6 +154,32 @@ class Storage:
             notify_blocks_changed(self.data_dir, res)
 
 
+def split_descending_blocks(blocks, ratio): # 10 10 10 10 200 100 50 25 12 12
+    blocks = blocks[::-1]
+    for idx, (p, n) in enumerate(zip(blocks[:-1], blocks[1:]), 1):
+        if p.size / n.size > ratio:
+            break
+    else:
+        idx = None
+
+    if idx is not None:
+        r1 = blocks[idx:][::-1]
+        r2 = blocks[:idx][::-1]
+    else:
+        r1 = []
+        r2 = blocks[::-1]
+
+    if len(r2) > 1:
+        for p, n in zip(r2[:-1], r2[1:]):
+            if max(p.size, n.size) / min(p.size, n.size) <= ratio:
+                r2 = [p, n]
+                break
+        else:
+            r2 = []
+
+    return [r1, r2]
+
+
 def find_blocks_to_merge(resolution, blocks, *, max_size, max_gap_size, ratio):
     result = []
     segment = []
@@ -188,11 +214,7 @@ def find_blocks_to_merge(resolution, blocks, *, max_size, max_gap_size, ratio):
         result.append(segment)
 
     if result and len(result[-1]) > 1:
-        b1, b2 = result[-1][-2:]
-        if max(b1.size, b2.size) / min(b1.size, b2.size) < ratio:
-            result[-1] = [b1, b2]
-        else:
-            result[-1] = []
+        result = result[:-1] + split_descending_blocks(result[-1], ratio)
 
     return [[b.path for b in s] for s in result if len(s) > 1]
 
