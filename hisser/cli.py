@@ -1,9 +1,8 @@
-import os
 import sys
 from functools import wraps
 
 import click
-from . import config, db, defaults, agg, metrics
+from . import config, db, defaults, agg, metrics, utils
 
 
 @click.group()
@@ -72,6 +71,16 @@ def cmd_dump_index(cfg):
     mi = metrics.MetricIndex(cfg.INDEX)
     for k, v in mi.iter_tree():
         print(k.decode(), v.decode())
+
+
+@cli.command('backup', help='backup db file')
+@click.argument('dbfile')
+@click.argument('out')
+@config_aware
+def cmd_dump_index(cfg):
+    with open(cfg.OUT, 'wb') as f:
+        with utils.open_env(cfg.DBFILE) as env:
+            env.copyfd(f.fileno(), True)
 
 
 @cli.command('check', help='checks metadata')
