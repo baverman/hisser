@@ -25,8 +25,10 @@ def config_aware(func):
 
 
 def common_options(func):
-    func = click.option('--config', '-c', '_config', metavar='path', help='path to config file')(func)
-    func = click.option('--data-dir', '-d', metavar='path', help='path to directory with data')(func)
+    func = click.option('--config', '-c', '_config',
+                        metavar='path', help='path to config file')(func)
+    func = click.option('--data-dir', '-d', metavar='path',
+                        help='path to directory with data')(func)
     return func
 
 
@@ -77,7 +79,7 @@ def cmd_dump_index(cfg):
 @click.argument('dbfile')
 @click.argument('out')
 @config_aware
-def cmd_dump_index(cfg):
+def cmd_backup(cfg):
     with open(cfg.OUT, 'wb') as f:
         with utils.open_env(cfg.DBFILE) as env:
             env.copyfd(f.fileno(), True)
@@ -100,9 +102,11 @@ def cmd_check(cfg):
 @cli.command('run', help='run server')
 @common_options
 @click.option('--carbon-bind', '-l', metavar='[host]:port',
-              help='host and port to listen carbon text protocol on tcp, default is {}'.format(defaults.CARBON_BIND))
+              help=('host and port to listen carbon text'
+                    ' protocol on tcp, default is {}').format(defaults.CARBON_BIND))
 @click.option('--carbon-bind-udp', metavar='[host]:port',
-              help='host and port to listen carbon text protocol on udp, default is {}'.format(defaults.CARBON_BIND_UDP))
+              help=('host and port to listen carbon'
+                    ' text protocol on udp, default is {}').format(defaults.CARBON_BIND_UDP))
 @config_aware
 def cmd_run(cfg):
     cfg.ensure_dirs()
@@ -118,14 +122,6 @@ def cmd_agg_method(cfg):
     method = cfg.agg_rules.get_method(cfg.METRIC)
     rmethods = {v: k for k, v in agg.METHODS.items()}
     print(rmethods[method])
-
-
-# @cli.command('test')
-# @common_options
-# @config_aware
-# def cmd_test(cfg):
-#     # print(cfg.reader.fetch(['localhost.cpu.percent.idle'], 1515435224, 1516040024))
-#     print(cfg.rpc_client.call('fetch', keys=[b'random.diceroll', b'localhost.cpu.percent.idle', 'foo']))
 
 
 if __name__ == '__main__':

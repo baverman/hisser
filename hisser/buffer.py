@@ -73,7 +73,7 @@ class Buffer:
         if data:
             result = (data, self.ts, self.resolution, size, self.new_names[:])
 
-            estimated_metrics =  self.collected_metrics // size
+            estimated_metrics = self.collected_metrics // size
             if not self.names_to_check and estimated_metrics / len(self.data) < self.compact_ratio:
                 log.info('Compact data %d -> %d', len(self.data), estimated_metrics)
                 self.names_to_check = list(self.data)

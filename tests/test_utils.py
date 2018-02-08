@@ -1,6 +1,5 @@
 import array
 import time
-import pytest
 
 from hisser import utils
 

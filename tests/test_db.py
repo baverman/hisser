@@ -48,7 +48,9 @@ def test_find_downsample_start():
 def test_find_downsample_max_size():
     blocks = [make_block(100, 10, 100)]
     result = db.find_blocks_to_downsample(10, blocks, 100, 30, 1, 40, 100)
-    assert get_segments(result) == [[100, 500, (100, 500)], [500, 900, (500, 900)], [900, 1100, (900, 1100)]]
+    assert get_segments(result) == [[100, 500, (100, 500)],
+                                    [500, 900, (500, 900)],
+                                    [900, 1100, (900, 1100)]]
 
 
 def test_find_downsample_mixed_shifts():

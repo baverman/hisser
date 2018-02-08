@@ -154,7 +154,7 @@ class Storage:
             notify_blocks_changed(self.data_dir, res)
 
 
-def split_descending_blocks(blocks, ratio): # 10 10 10 10 200 100 50 25 12 12
+def split_descending_blocks(blocks, ratio):
     blocks = blocks[::-1]
     for idx, (p, n) in enumerate(zip(blocks[:-1], blocks[1:]), 1):
         if p.size / n.size > ratio:
@@ -193,7 +193,7 @@ def find_blocks_to_merge(resolution, blocks, *, max_size, max_gap_size, ratio):
         if not segment:
             sstart = send = b.start
         else:
-            start = segment[0].start
+            sstart = segment[0].start
             send = segment[-1].end
 
         is_ok = True
@@ -324,6 +324,7 @@ def merge(data_dir, res, paths):
         last_idx = max(last_idx or 0, idx + b.size)
 
     stream = groupby(heapq.merge(*iters), lambda r: r[0])
+
     def gen():
         for k, g in stream:
             row = empty_row[:]

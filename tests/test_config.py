@@ -72,7 +72,7 @@ def test_config_host_port():
     cfg = Config()
 
     cfg['host'] = ''
-    assert cfg.host_port('host', required=False) == None
+    assert cfg.host_port('host', required=False) is None
 
     cfg['host'] = ':8000'
     assert cfg.host_port('host') == ('0.0.0.0', 8000)

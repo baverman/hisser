@@ -18,6 +18,8 @@ PAGE_SIZE = resource.getpagesize()
 mdumps = partial(msgpack.dumps, use_bin_type=True)
 mloads = partial(msgpack.loads, encoding='utf-8')
 
+Fork = namedtuple('Fork', 'pid start')
+
 
 def norm_res(ts, res):
     return int(ts) // res * res
@@ -34,7 +36,7 @@ def page_size(size):
 def safe_unlink(path):
     try:
         os.unlink(path)
-    except:
+    except OSError:
         pass
 
 
@@ -52,14 +54,12 @@ def overlap(range1, range2):  # pragma: nocover
         return 0, 0, 0
 
 
-Fork = namedtuple('Fork', 'pid start')
-
 def run_in_fork(func, *args, **kwargs):
     pid = os.fork()
     if pid == 0:  # pragma: nocover
         try:
             func(*args, **kwargs)
-        except:
+        except Exception:
             import traceback
             traceback.print_exc()
             os._exit(1)

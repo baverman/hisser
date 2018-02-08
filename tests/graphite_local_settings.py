@@ -1,3 +1,4 @@
+# flake8: noqa
 SECRET_KEY = "{{ SECRET_KEY | random_string }}"
 LOGGING_CONFIG = None
 

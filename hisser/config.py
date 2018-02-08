@@ -33,7 +33,8 @@ def get_config(args):
 class Config(dict):
     __getattr__ = dict.__getitem__
 
-    class Error(Exception): pass
+    class Error(Exception):
+        pass
 
     def error(func):
         def inner(self, name, *args, **kwargs):

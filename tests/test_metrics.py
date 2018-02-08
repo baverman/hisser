@@ -23,6 +23,7 @@ def test_make_tree():
                       (b'app1', b'inst2'),
                       (b'app1.inst2', b'foo')]
 
+
 def test_query_parts():
     assert api.query_parts('localhost.boo.*.boo.foo') == (b'localhost.boo', [b'*', b'boo', b'foo'])
     assert api.query_parts('[abc].boo.foo') == (b'', [b'[abc]', b'boo', b'foo'])
