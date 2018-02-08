@@ -14,13 +14,6 @@ def get_config(data_dir, **opts):
     return config.get_config(opts)
 
 
-def run_server(cfg):
-    cfg.ensure_dirs()
-    server = cfg.server
-    server.listen(False)
-    server.run()
-
-
 def send_tcp(data):
     s = socket.create_connection(('127.0.0.1', 14000), 3)
     s.sendall('\n'.join('{} {} {}'.format(*r) for r in data).encode())
@@ -42,12 +35,13 @@ def test_simple(tmpdir):
     cfg = get_config(str(tmpdir))
     cfg.ensure_dirs()
 
-    t = Thread(target=run_server, args=(cfg,))
+    cfg.server.listen(True)
+
+    t = Thread(target=cfg.server.run)
     t.daemon = True
     t.start()
 
     start = time.time()
-    time.sleep(0.1)
     send_tcp([('m1', 10, start)])
     send_udp([('m2', 10, start)])
     time.sleep(0.1)

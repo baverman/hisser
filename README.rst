@@ -12,3 +12,47 @@ hisser
 
 
 Time series database, backend for graphite, fast alternative to carbon + whisper
+
+All metrics are dumped into blocks (lmdb databases). Each block
+contain all metrics and their data for particular amount of time.
+
+::
+
+    data_dir
+    ├── resolution1
+    │   ├── block1.hdb     # block data
+    │   ├── block2.hdb
+    │   └── blocks.state   # notifications
+    ├── resolution2
+    │   ├── block1.hdb
+    │   ├── block2.hdb
+    │   └── blocks.state
+    └── metric.index       # metric name index
+
+
+::
+
+    -------------------------------------------------------------->  time
+     +------------------------------+------------+----+----+----+
+     |                              |            |    |    |    |
+     |            block1            |   block2   | b3 | b4 | b5 |
+     |                              |            |    |    |    |
+     +------------------------------+------------+----+----+----+
+
+                                ||  periodic
+                                \/  merge
+
+     +------------------------------+----------------------+----+
+     |                              |                      |    |
+     |            block1            |         block2'      | b5 |
+     |                              |                      |    |
+     +------------------------------+----------------------+----+
+     |                                                     /
+     |   ||  periodic downsample            ---------------
+     |   \/                                /
+     |          /--------------------------
+     +---------+
+     |         |
+     | block1' |
+     |         |
+     +---------+

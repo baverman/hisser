@@ -1,0 +1,4 @@
+ARG IMAGE
+FROM ${IMAGE}
+
+RUN GRAPHITE_NO_PREFIX=1 python3 -m pip install pytest pytest-cov lmdb==0.93 msgpack==0.5.1 graphite-web==1.1.1 scandir
