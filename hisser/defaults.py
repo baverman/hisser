@@ -8,7 +8,7 @@ DATA_DIR = None
 
 # Default retentions, resolution:keep-interval,...
 # Greater resolution must be an integer factor of a smaller one.
-RETENTIONS = '1m:3d, 5m:15d, 30m:90d, 6h:3y'
+RETENTIONS = '1m:3d, 5m:15d, 30m:90d, 2h:1y'
 
 # Default aggregations, pattern|method,...
 # Patterns are applied in sorted order.
