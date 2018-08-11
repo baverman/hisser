@@ -44,6 +44,7 @@ def test_simple(tmpdir):
     start = time.time()
     send_tcp([('m1', 10, start)])
     send_udp([('m2', 10, start)])
+    send_tcp([('m3;tag=value', 10, start)])
     time.sleep(0.1)
     result = cfg.rpc_client.call('fetch', keys=[b'm1', b'm2'])
     assert set(result['result']) == {b'm1', b'm2'}
@@ -65,6 +66,15 @@ def test_simple(tmpdir):
 
     result, = f.fetch(['m1'], start - 60, start + 60)
     assert result['path'] == 'm1'
+
+    result, = f.fetch(["seriesByTag('tag=value')"], start - 60, start + 60)
+    assert result['path'] == 'm3;tag=value'
+
+    result = f.auto_complete_tags([], 't')
+    assert result == ['tag']
+
+    result = f.auto_complete_values([], 'tag', 'v')
+    assert result == ['value']
 
     cfg.server.time_to_exit = True
     time.sleep(3)

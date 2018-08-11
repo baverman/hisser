@@ -70,3 +70,60 @@ def test_prefix(tmpdir):
 
     result = mi.find_tree('app1.inst1.*')
     assert result == [(True, b'app1.inst1.boo'), (True, b'app1.inst1.foo')]
+
+
+def test_tags(tmpdir):
+    fname = str(tmpdir.join('metrics.db'))
+    mi = api.MetricIndex(fname)
+    mi.add([b'boo;dc=prod', b'foo;dc=test;host=alpha'])
+
+    assert mi.get_tags() == [b'dc', b'host', b'name']
+    assert mi.get_tag_values('dc') == [b'prod', b'test']
+    assert mi.get_tag_values('host') == [b'alpha']
+    assert mi.get_tag_values('foo') == []
+
+    # = op
+    result = mi.match_by_tags([('dc', '=', 'prod')])
+    assert result == {b'boo;dc=prod'}
+
+    result = mi.match_by_tags([('name', '=', 'foo')])
+    assert result == {b'foo;dc=test;host=alpha'}
+
+    # != op
+    result = mi.match_by_tags([('dc', '!=', 'prod')])
+    assert result == {b'foo;dc=test;host=alpha'}
+
+    result = mi.match_by_tags([('dc', '!=', 'prod'), ('host', '=', 'alpha')])
+    assert result == {b'foo;dc=test;host=alpha'}
+
+    # =~ op
+    result = mi.match_by_tags([('dc', '=~', ':prod,test')])
+    assert result == {b'boo;dc=prod', b'foo;dc=test;host=alpha'}
+
+    result = mi.match_by_tags([('dc', '=~', ':stable')])
+    assert result == set()
+
+    result = mi.match_by_tags([('name', '=~', '!bo*')])
+    assert result == {b'boo;dc=prod'}
+
+    result = mi.match_by_tags([('name', '=~', '!oo*')])
+    assert result == set()
+
+    result = mi.match_by_tags([('dc', '=~', '(prod|test)')])
+    assert result == {b'boo;dc=prod', b'foo;dc=test;host=alpha'}
+
+    # !=~ op
+    result = mi.match_by_tags([('dc', '!=~', ':prod,test')])
+    assert result == set()
+
+    result = mi.match_by_tags([('dc', '!=~', ':stable')])
+    assert result == {b'boo;dc=prod', b'foo;dc=test;host=alpha'}
+
+    result = mi.match_by_tags([('name', '!=~', '!bo*')])
+    assert result == {b'foo;dc=test;host=alpha'}
+
+    result = mi.match_by_tags([('name', '!=~', '!oo*')])
+    assert result == {b'boo;dc=prod', b'foo;dc=test;host=alpha'}
+
+    result = mi.match_by_tags([('dc', '!=~', '(prod|test)')])
+    assert result == set()
