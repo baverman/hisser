@@ -2,10 +2,11 @@ import sys
 from functools import wraps
 
 import click
-from . import config, db, defaults, agg, metrics, utils
+from . import config, db, defaults, agg, metrics, utils, version
 
 
 @click.group()
+@click.version_option(version=version)
 def cli():
     pass
 
@@ -107,6 +108,9 @@ def cmd_check(cfg):
 @click.option('--carbon-bind-udp', metavar='[host]:port',
               help=('host and port to listen carbon'
                     ' text protocol on udp, default is {}').format(defaults.CARBON_BIND_UDP))
+@click.option('--link-bind', metavar='[host]:port',
+              help=('host and port to listen graphite finder link protocol'
+                    ', default is {}').format(defaults.LINK_BIND))
 @config_aware
 def cmd_run(cfg):
     cfg.ensure_dirs()

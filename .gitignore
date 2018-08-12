@@ -6,3 +6,6 @@
 /bench.py
 /.coverage
 /.pytest_cache
+/dist
+/build
+/*.egg-info

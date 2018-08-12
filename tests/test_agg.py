@@ -37,7 +37,7 @@ def test_safe_last():
 
 
 def test_agg_rules():
-    rules = (('\.count$', 'sum'), ('^localhost\.', 'last'))
+    rules = ((r'\.count$', 'sum'), (r'^localhost\.', 'last'))
     ar = agg.AggRules(rules, 'min')
 
     names = ('boo.foo', 'boo.count', 'boo.last', 'boo.localhost', 'localhost.foo')

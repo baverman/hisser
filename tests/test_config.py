@@ -29,14 +29,14 @@ def test_parse_retentions():
 
 
 def test_parse_aggregation():
-    assert parse_aggregation('\.count$|sum') == ['\.count$', 'sum']
-    assert parse_aggregation('(\.count|\.sum)$|sum') == ['(\.count|\.sum)$', 'sum']
+    assert parse_aggregation(r'\.count$|sum') == [r'\.count$', 'sum']
+    assert parse_aggregation(r'(\.count|\.sum)$|sum') == [r'(\.count|\.sum)$', 'sum']
 
 
 def test_cfg_agg_rules():
     cfg = {
-        'AGG_RULE_B': '\.count$|sum',
-        'AGG_RULE_A': '\.min$|min',
+        'AGG_RULE_B': r'\.count$|sum',
+        'AGG_RULE_A': r'\.min$|min',
         'AGG_RULE_C': ''
     }
 

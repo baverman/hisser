@@ -13,10 +13,10 @@ RETENTIONS = '1m:3d, 5m:15d, 30m:90d, 2h:1y'
 # Default aggregations, pattern|method,...
 # Patterns are applied in sorted order.
 # You can test it with `hisser agg-method <metric name>` command.
-AGG_RULE_MAX = '\.max$|max'
-AGG_RULE_MIN = '\.min$|min'
-AGG_RULE_SUM = '\.count$|sum'
-# AGG_RULE_CUSTOM_RULE = 'my_pattern|avg'
+AGG_RULE_MAX = r'\.max$|max'
+AGG_RULE_MIN = r'\.min$|min'
+AGG_RULE_SUM = r'\.count$|sum'
+# AGG_RULE_CUSTOM_RULE = r'my_pattern|avg'
 
 # Default aggregation if no any rules matched
 AGG_DEFAULT_METHOD = 'avg'

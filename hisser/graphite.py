@@ -37,7 +37,7 @@ def scream(fn):  # pragma: nocover
 def parse_tagspec(tagspec):
     m = re.match('^([^;!=]+)(!?=~?)([^;]*)$', tagspec)
     if m is None:  # pragma: no cover
-      raise ValueError("Invalid tagspec %s" % tagspec)
+        raise ValueError("Invalid tagspec %s" % tagspec)
 
     tag = m.group(1)
     operator = m.group(2)
