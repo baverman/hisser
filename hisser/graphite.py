@@ -2,6 +2,7 @@ import re
 import logging
 from contextlib import contextmanager
 from time import clock, perf_counter
+from functools import lru_cache
 
 from graphite.node import LeafNode, BranchNode
 from graphite.finders.utils import BaseFinder
@@ -10,6 +11,12 @@ from graphite.render.grammar import grammar
 from . import config
 
 log = logging.getLogger('hisser.graphite')
+
+old_parse = grammar.parseString
+@lru_cache(maxsize=16384)
+def parseString(instring, parseAll=False):
+    return old_parse(instring, parseAll)
+grammar.parseString = parseString
 
 
 @contextmanager
@@ -137,3 +144,5 @@ class Finder(BaseFinder):
                 result.extend(r for r in values
                               if valuePrefix in r and r not in rset)
         return result
+
+
