@@ -18,6 +18,23 @@ def parseString(instring, parseAll=False):
     return old_parse(instring, parseAll)
 grammar.parseString = parseString
 
+try:
+    import ujson
+except ImportError:  # pragma: no cover
+    pass
+else:  # pragma: no cover
+    from graphite import util
+    class _json:
+        @staticmethod
+        def dumps(*args, **kwargs):
+            return ujson.dumps(*args, ensure_ascii=False)
+
+        @staticmethod
+        def dump(*args, **kwargs):
+            return ujson.dump(*args, ensure_ascii=False)
+
+    util._json = _json
+
 
 @contextmanager
 def profile(name):  # pragma: no cover

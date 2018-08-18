@@ -91,7 +91,8 @@ class Reader:
                     row += add
                 values = cur_result.get(name)
                 if values is not None:
-                    row[s_idx: s_idx + ib.size] = values[ib.idx:ib.idx+ib.size]
+                    row[s_idx: s_idx + ib.size] = [None if isnan(v) else v
+                                                   for v in values[ib.idx:ib.idx+ib.size]]
             stop = ib.end
 
         return (start, stop, res), result
