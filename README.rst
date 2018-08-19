@@ -53,8 +53,9 @@ Simplest way is to use official `docker image`::
 
    docker run --rm -u $(id -u):$(id -g) -p 2003:2003 -p 8080:8080 -v /path/to/data:/data baverman/graphite-hisser
 
-Likely you will use ``hisser`` as storage for ``grafana`` so you don't need 8080 port
-accessible from external network. In this case you should use separate docker network
+Port `2003` is a graphite protocol. `8080` is graphite API, you can point
+grafana to it. In production you don't need 8080 port accessible from
+external network. In this case you should use separate docker network
 and map 2003 port only or use ``--network host`` and specify ``GRAPHITE_BIND=127.0.0.1:8080``
 envvar.
 
