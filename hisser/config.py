@@ -9,18 +9,20 @@ TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
                  'w': 86400 * 7, 'y': 86400 * 365}
 
 
-def get_config(args):
+def get_config(args, config_path=None):
     result = Config((k, v) for k, v in vars(defaults).items()
                     if not k.startswith('_'))
 
-    config_path = os.environ.get('HISSER_CONFIG') or args.get('_config')
     if config_path:
         from runpy import run_path
         result.update(run_path(config_path))
 
-    for k, v in args.items():
-        if not k.startswith('_') and v is not None:
-            result[k.upper()] = v
+    for k, v in list(args.items()):
+        key = k.upper()
+        if key in result:
+            args.pop(k)
+            if v is not None:
+                result[key] = v
 
     for k in result:
         ename = 'HISSER_' + k

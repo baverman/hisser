@@ -44,21 +44,24 @@ def test_cfg_agg_rules():
     assert rules == [['\\.min$', 'min'], ['\\.count$', 'sum']]
 
 
-def test_config_from_file(tmpdir):
+def test_config_from_file(tmpdir, monkeypatch):
+    monkeypatch.setattr('hisser.config.defaults.BOO', '', raising=False)
     tmpdir.join('boo').write('BOO = 10')
-    opts = {'_config': str(tmpdir.join('boo'))}
-    cfg = get_config(opts)
+    cfg = get_config({}, str(tmpdir.join('boo')))
     assert cfg.BOO == 10
 
 
-def test_config_from_env():
+def test_config_from_env(monkeypatch):
+    monkeypatch.setattr('hisser.config.defaults.FOO', '', raising=False)
     opts = {'FOO': 20}
     os.environ['HISSER_FOO'] = '10'
     cfg = get_config(opts)
     assert cfg.FOO == '10'
 
 
-def test_config_error():
+def test_config_error(monkeypatch):
+    monkeypatch.setattr('hisser.config.defaults.BAR', '', raising=False)
+    monkeypatch.setattr('hisser.config.defaults.BOO', '', raising=False)
     opts = {'BAR': 'boo', 'BOO': ''}
     cfg = get_config(opts)
     with pytest.raises(Config.Error):
