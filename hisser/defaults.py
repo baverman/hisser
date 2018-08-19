@@ -38,13 +38,24 @@ BUFFER_FLUSH_SIZE = 10
 # resolution of 60s.
 BUFFER_MAX_POINTS = 500000
 
+# Remove metrics without points from buffer on this ratio threshold.
 BUFFER_COMPACT_RATIO = 0.9
 
+# Maximum size of merged block in points.
 MERGE_MAX_SIZE = 700
+
+# Maximum gap between blocks being merged and downsampled in points. If gap
+# is greater then each block will be placed in different merged/downsampled block.
 MERGE_MAX_GAP_SIZE = 30
+
+# Size ratio between blocks to allow it to be merged. It is needed to
+# prohibit repeated merging of a big block with a small one.
 MERGE_RATIO = 1.4
 
+# Minimal size of block to downsample in points.
 DOWNSAMPLE_MIN_SIZE = 10
+
+# Maximum size of final downsampled block in points.
 DOWNSAMPLE_MAX_SIZE = 1000
 
 # Listen tcp `[host]:port` for carbon text protocol,
