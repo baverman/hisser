@@ -64,16 +64,25 @@ def cmd_cleanup(cfg):
 @config_aware
 def cmd_dump(cfg):
     for k, v in db.dump(cfg.BLOCK):
-        print(k, len(v), v)
+        print(k.decode(), len(v), v, sep='\t')
 
 
 @cli.command('dump-index', help='dump content of metric index')
+@click.option('-t', '--type', default='tag-names',
+                type=click.Choice(['tree', 'tags', 'tag-names']))
 @click.argument('index')
 @config_aware
 def cmd_dump_index(cfg):
     mi = metrics.MetricIndex(cfg.INDEX)
-    for k, v in mi.iter_tree():
-        print(k.decode(), v.decode())
+    if cfg.TYPE == 'tree':
+        for k, v in mi.iter_tree():
+            print(k.decode(), v.decode(), sep='\t')
+    elif cfg.TYPE == 'tags':
+        for k, v in mi.iter_tags():
+            print(k.decode(), v.decode(), sep='\t')
+    elif cfg.TYPE == 'tag-names':
+        for k, v in mi.iter_tag_names():
+            print(k.decode(), v.decode(), sep='\t')
 
 
 @cli.command('backup', help='backup db file')

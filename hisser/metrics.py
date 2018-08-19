@@ -33,6 +33,16 @@ class MetricIndex:
             for k, v in cur:
                 yield k, v
 
+    def iter_tags(self):
+        with txn_cursor(self.env, False, self.tag_db) as cur:
+            for k, v in cur:
+                yield k, v
+
+    def iter_tag_names(self):
+        with txn_cursor(self.env, False, self.tag_name_db) as cur:
+            for k, v in cur:
+                yield k, v
+
     def find_metrics_many(self, queries, check=False):
         matched_metrics = {}
         with txn_cursor(self.env, False, self.tree_db) as cur:

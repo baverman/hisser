@@ -77,6 +77,15 @@ def test_tags(tmpdir):
     mi = api.MetricIndex(fname)
     mi.add([b'boo;dc=prod', b'foo;dc=test;host=alpha'])
 
+    assert list(mi.iter_tags()) == [
+        (b'dc', b'prod'), (b'dc', b'test'), (b'host', b'alpha'),
+        (b'name', b'boo'), (b'name', b'foo')]
+
+    assert list(mi.iter_tag_names()) == [
+        (b'dc=prod', b'boo;dc=prod'), (b'dc=test', b'foo;dc=test;host=alpha'),
+        (b'host=alpha', b'foo;dc=test;host=alpha'),
+        (b'name=boo', b'boo;dc=prod'), (b'name=foo', b'foo;dc=test;host=alpha')]
+
     assert mi.get_tags() == [b'dc', b'host', b'name']
     assert mi.get_tag_values('dc') == [b'prod', b'test']
     assert mi.get_tag_values('host') == [b'alpha']
