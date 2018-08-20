@@ -31,7 +31,8 @@ ENV PATH=/pypkg/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     GRAPHITE_STORAGE_DIR=/data \
     DJANGO_SETTINGS_MODULE=graphite_local_settings \
     GRAPHITE_BIND=:8080 \
-    HISSER_DATA_DIR=/data
+    HISSER_DATA_DIR=/data \
+    HISSER_LOGGING_LEVEL=INFO
 
 EXPOSE 2003 8080
 

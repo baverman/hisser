@@ -1,4 +1,5 @@
 import os
+import sys
 import resource
 import array
 
@@ -62,6 +63,8 @@ def run_in_fork(func, *args, **kwargs):
         except Exception:
             import traceback
             traceback.print_exc()
+            sys.stdout.flush()
+            sys.stderr.flush()
             os._exit(1)
         else:
             os._exit(0)
