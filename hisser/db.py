@@ -1,14 +1,18 @@
 import logging
 import os.path
 import heapq
+import array
+import zlib
 
 from math import isnan
 from time import time
 from itertools import islice, groupby
 
 from .blocks import Block, BlockList, notify_blocks_changed, get_info
-from .utils import (estimate_data_size, mdumps, mloads, NAN, safe_unlink,
-                    MB, page_size, norm_res, cursor, non_empty_rows, open_env)
+from .pack import pack, unpack
+from .utils import (estimate_data_size, NAN, safe_unlink,
+                    MB, page_size, norm_res, cursor, non_empty_rows,
+                    open_env, make_key)
 
 log = logging.getLogger(__name__)
 
@@ -110,9 +114,12 @@ class Storage:
 
     def new_block(self, data, ts, resolution, size, new_names):
         self.new_names(new_names)
-        data = sorted((k, list(v)) for k, v in non_empty_rows(data, size))
-        if data:
-            return new_block(self.data_dir, data, ts, resolution, size, append=True)
+        filtered = list(non_empty_rows(data, size))
+        if filtered:
+            data = sorted((make_key(k), v) for k, v in filtered)
+            path = new_block(self.data_dir, data, ts, resolution, size, append=True)
+            write_block_names(path, (k for k, v in filtered))
+            return path
 
     def new_names(self, new_names):
         if new_names:
@@ -151,6 +158,7 @@ class Storage:
             for b in block_list.blocks(res):
                 if b.end < now - ret:
                     os.unlink(b.path)
+                    safe_unlink(b.path + 'm')
                     log.info('Cleanup old block %s', b.path)
             notify_blocks_changed(self.data_dir, res)
 
@@ -269,7 +277,7 @@ def find_blocks_to_downsample(resolution, blocks, new_resolution,
 
 
 def downsample(data_dir, new_resolution, segments, agg_rules):
-    for (blocks, s_start, s_stop) in segments:
+    for blocks, s_start, s_stop in segments:
         iters = [iter_dump(b.path, idx) for idx, b in enumerate(blocks)]
         stream = groupby(heapq.merge(*iters), lambda r: r[0])
 
@@ -277,7 +285,7 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
         s_size = (s_stop - s_start) // resolution
         f_size = (s_stop - s_start) // new_resolution
         csize = new_resolution // resolution
-        empty_row = [NAN] * s_size
+        empty_row = array.array('d', [NAN] * s_size)
         max_size, max_block = max((os.path.getsize(b.path), b) for b in blocks)
         map_size = page_size(max_size * f_size / max_block.size * 5)
 
@@ -295,11 +303,14 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
                     row[s_slices[bn]] = values[b_slices[bn]]
 
                 agg_method = agg_rules.get_method(k, use_bin=True)
-                agg = [agg_method(row[r:r+csize]) for r in range(0, s_size, csize)]
+                agg = array.array('d', (agg_method(row[r:r+csize])
+                                        for r in range(0, s_size, csize)))
                 yield k, agg
 
         path = new_block(data_dir, gen(), s_start, new_resolution, s_size // csize,
                          map_size=map_size, append=True)
+
+        merge_block_names([it.path for it in blocks], path)
         log.info('Downsample %s', path)
 
 
@@ -310,7 +321,7 @@ def merge(data_dir, res, paths):
     first = blocks[0]
     last = blocks[-1]
     size = (last.end - first.start) // res
-    empty_row = [NAN] * size
+    empty_row = array.array('d', [NAN] * size)
 
     max_size, max_block = max((os.path.getsize(b.path), b) for b in blocks)
     map_size = page_size(max_size * size / max_block.size * 3)
@@ -331,19 +342,28 @@ def merge(data_dir, res, paths):
             row = empty_row[:]
             for _, bn, values in g:
                 if overlaps[bn]:
-                    values = [r if isnan(v) else v
-                              for r, v in zip(row[slices[bn]], values)]
+                    values = array.array('d', (r if isnan(v) else v
+                              for r, v in zip(row[slices[bn]], values)))
                 row[slices[bn]] = values
             yield k, row
 
-    new_block(data_dir, gen(), first.start, res, size,
-              map_size=map_size, append=True, notify=False)
+    np = new_block(data_dir, gen(), first.start, res, size,
+                   map_size=map_size, append=True, notify=False)
+
+    merge_block_names(paths, np)
 
     for p in paths:
         os.unlink(p)
+        safe_unlink(p + 'm')
         safe_unlink(p + '-lock')
 
     notify_blocks_changed(data_dir, res)
+
+
+def merge_block_names(paths, dst):
+    iters = [read_block_names(it) for it in paths]
+    names = (k for k, g in groupby(heapq.merge(*iters)))
+    write_block_names(dst, names, sort=False)
 
 
 def new_block(data_dir, data, timestamp, resolution, size,
@@ -353,7 +373,7 @@ def new_block(data_dir, data, timestamp, resolution, size,
     tmp_path = path + '.tmp'
 
     map_size = map_size or estimate_data_size(data, size) * 2 + 100*MB
-    data = ((k, mdumps(v)) for k, v in data)
+    data = ((k, pack(v)) for k, v in data)
     with cursor(tmp_path, page_size(map_size), lock=False) as cur:
         cur.putmulti(data, overwrite=False, append=append)
 
@@ -365,23 +385,49 @@ def new_block(data_dir, data, timestamp, resolution, size,
     return path
 
 
+def write_block_names(path, names, sort=True):
+    path = path + 'm'
+    tmp_path = path + '.tmp'
+    if sort:
+        names = sorted(names)
+    with open(tmp_path, 'wb') as f:
+        f.write(zlib.compress(b'\n'.join(names)))
+
+    os.rename(tmp_path, path)
+    return path
+
+
+def read_block_names(path):
+    path = path + 'm'
+    if os.path.exists(path):
+        with open(path, 'rb') as f:
+            return zlib.decompress(f.read()).splitlines()
+    return []
+
+
 def read_block(path, keys):
+    k2k = {make_key(it): it for it in keys}
+    keys = sorted(k2k)
+    info = get_info(path)
+
     result = {}
     with cursor(path, readonly=True) as cur:
         for k in keys:
             v = cur.get(k, None)
             if v is not None:
-                result[k] = mloads(v)
+                result[k2k[k]] = unpack(v, info.size)
     return result
 
 
 def dump(path):  # pragma: nocover
+    info = get_info(path)
     with cursor(path, readonly=True) as cur:
         for k, v in cur:
-            yield k, mloads(v)
+            yield k, unpack(v, info.size)
 
 
 def iter_dump(path, idx, size=10000):
+    info = get_info(path)
     k = None
     while True:
         with open_env(path, readonly=True) as env:
@@ -393,7 +439,7 @@ def iter_dump(path, idx, size=10000):
                         cur.first()
 
                     for k, v in islice(cur, size):
-                        yield k, idx, mloads(v)
+                        yield k, idx, unpack(v, info.size)
 
                     if cur.next():
                         k = cur.key()

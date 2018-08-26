@@ -1,5 +1,5 @@
 *.pyc
-/tmp
+/tmp*
 /.cache
 /graphite_local_settings.py
 /test.py
@@ -9,3 +9,4 @@
 /dist
 /build
 /*.egg-info
+*.so

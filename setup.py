@@ -1,5 +1,18 @@
+import os
 from setuptools import setup, find_packages
+from setuptools.extension import Extension
+
 import hisser
+
+USE_CYTHON = os.environ.get('USE_CYTHON')
+
+ext = '.pyx' if USE_CYTHON else '.c'
+
+extensions = [Extension('hisser.pack', ['hisser/pack' + ext])]
+
+if USE_CYTHON:
+    from Cython.Build import cythonize
+    extensions = cythonize(extensions)
 
 setup(
     name='hisser',
@@ -11,7 +24,8 @@ setup(
     description='Fast TSDB backend for graphite',
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
-    install_requires=['msgpack', 'click', 'lmdb'],
+    install_requires=['msgpack', 'click', 'lmdb', 'xxhash'],
+    ext_modules=extensions,
     entry_points={
         'console_scripts': ['hisser = hisser.cli:cli']
     },

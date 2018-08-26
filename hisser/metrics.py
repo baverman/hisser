@@ -2,15 +2,33 @@ import re
 from fnmatch import filter as fnfilter, translate
 
 import lmdb
-from .utils import MB, txn_cursor
+from .utils import MB, txn_cursor, make_key
 
 
 class MetricIndex:
     def __init__(self, path, map_size=500*MB):
-        self.env = lmdb.open(path, map_size, subdir=False, max_dbs=4)
+        self.env = lmdb.open(path, map_size, subdir=False, max_dbs=6)
         self.tree_db = self.env.open_db(b'tree', dupsort=True)
-        self.tag_name_db = self.env.open_db(b'tag_name', dupsort=True)
         self.tag_db = self.env.open_db(b'tag', dupsort=True)
+        self.tag_name_db = self.env.open_db(b'tag_name')
+        self.tag2idx_db = self.env.open_db(b'tag2idx')
+        self.idx2tag_db = self.env.open_db(b'idx2tag')
+        self.tag_cache = {}
+
+    def idx2name(self, idx, ct):
+        try:
+            return self.tag_cache[idx]
+        except KeyError:
+            pass
+        t = ct.get(idx)
+        if t.startswith(b'name='):
+            t = t[5:]
+        self.tag_cache[idx] = t
+        return t
+
+    def decode_name(self, data, ct, start=0):
+        name = self.idx2name
+        return b';'.join(name(data[r:r+4], ct) for r in range(start, len(data), 4))
 
     def add(self, names):
         tagged = [r for r in names if b';' in r]
@@ -22,11 +40,49 @@ class MetricIndex:
                 cur.putmulti(tree)
 
         if tagged:
-            tags, tag_names = parse_tags(tagged)
+            self.add_tags(tagged)
+
+    def add_tags(self, names):
+        parted_names = list(tag_parts(names))
+        tags = set()
+        for parts in parted_names:
+            tags.update(parts)
+
+        ids = self.get_tag_ids(tags)
+        tag_names = []
+        for parts in parted_names:
+            nk = b''.join(ids[r] for r in parts)
+            tag_names.extend((ids[r] + nk, b'') for r in parts)
+
+        with txn_cursor(self.env, True, self.tag_name_db) as cur:
+            cur.putmulti(tag_names, overwrite=False)
+
+    def get_tag_ids(self, tags):
+        tag_idx = {}
+        with txn_cursor(self.env, True, self.tag2idx_db) as cur:
+            for t in sorted(tags):
+                tid = cur.get(t)
+                if tid:
+                    tag_idx[t] = tid
+            unassigned_tags = tags.difference(tag_idx)
+
+            if unassigned_tags:
+                last_idx = int(str(cur.get(b'__last_idx__') or b'0', 'ascii'))
+                cur.put(b'__last_idx__', str(last_idx + len(unassigned_tags)).encode())
+                ti = [(t, idx.to_bytes(4, 'big'))
+                      for idx, t in enumerate(unassigned_tags, last_idx+1)]
+                cur.putmulti(ti)
+                tag_idx.update(ti)
+
+        if unassigned_tags:
+            with txn_cursor(self.env, True, self.idx2tag_db) as cur:
+                cur.putmulti((idx, t) for t, idx in ti)
+
             with txn_cursor(self.env, True, self.tag_db) as cur:
-                cur.putmulti(tags)
-            with txn_cursor(self.env, True, self.tag_name_db) as cur:
-                cur.putmulti(tag_names)
+                g = (r.partition(b'=') for r in sorted(unassigned_tags))
+                cur.putmulti(((k, v) for k, _, v in g))
+
+        return tag_idx
 
     def iter_tree(self):
         with txn_cursor(self.env, False, self.tree_db) as cur:
@@ -39,9 +95,11 @@ class MetricIndex:
                 yield k, v
 
     def iter_tag_names(self):
-        with txn_cursor(self.env, False, self.tag_name_db) as cur:
-            for k, v in cur:
-                yield k, v
+        name = self.idx2name
+        with txn_cursor(self.env, False,
+                        self.tag_name_db, self.idx2tag_db) as (cn, ct):
+            for k in cn.iternext(True, False):
+                yield (name(k[:4], ct), self.decode_name(k, ct, 4))
 
     def find_metrics_many(self, queries, check=False):
         matched_metrics = {}
@@ -75,11 +133,16 @@ class MetricIndex:
 
     def find_by_tag_values(self, tag, values):
         result = []
-        with txn_cursor(self.env, False, self.tag_name_db) as cur:
+        with txn_cursor(self.env, False,
+                        self.tag_name_db, self.tag2idx_db) as (cn, cti):
             for value in values:
-                key = '{}={}'.format(tag, value).encode()
-                if cur.set_key(key):
-                    result.extend(cur.iternext_dup(False, True))
+                idx = cti.get('{}={}'.format(tag, value).encode())
+                if idx and cn.set_range(idx):
+                    for k in cn.iternext(True, False):
+                        if idx == k[:4]:
+                            result.append(k[4:])
+                        else:
+                            break
         return result
 
     def get_tags(self):
@@ -119,6 +182,9 @@ class MetricIndex:
             if not result:
                 return set()
 
+        if result:
+            with txn_cursor(self.env, False, self.idx2tag_db) as ct:
+                result = [self.decode_name(it, ct) for it in result]
         return result
 
     def cached_tag_values(self, tag, cache):
@@ -158,23 +224,13 @@ def query_parts(query):
     return b'.'.join(prefix), parts[len(prefix):]
 
 
-def parse_tags(names):
-    tags = []
-    tag_names = []
+def tag_parts(names):
     for name in names:
         parts = name.split(b';')
         if not parts:  # pragma: no cover
             continue
 
-        tags.append((b'name', parts[0]))
-        tag_names.append((b'name=%b' % parts[0], name))
-
-        for p in parts[1:]:
-            k, _, v = p.partition(b'=')
-            tags.append((k, v))
-            tag_names.append((b'%b=%b' % (k, v), name))
-
-    return tags, tag_names
+        yield (b'name=%s' % parts[0], *parts[1:])
 
 
 def pattern_match(values, pattern):

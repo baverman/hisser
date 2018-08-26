@@ -9,6 +9,7 @@ from math import ceil
 from collections import namedtuple
 from contextlib import contextmanager
 
+from xxhash import xxh64_digest
 import msgpack
 import lmdb
 
@@ -18,6 +19,7 @@ PAGE_SIZE = resource.getpagesize()
 
 mdumps = partial(msgpack.dumps, use_bin_type=True)
 mloads = partial(msgpack.loads, encoding='utf-8')
+mloads_t = partial(msgpack.loads, encoding='utf-8', use_list=False)
 
 Fork = namedtuple('Fork', 'pid start')
 
@@ -109,10 +111,17 @@ def cursor(path, map_size=None, readonly=False, lock=None, buffers=False):
 
 
 @contextmanager
-def txn_cursor(env, write=False, db=None):
+def txn_cursor(env, write=False, *dbs):
     with env.begin(write=write) as txn:
-        with txn.cursor(db) as cur:
-            yield cur
+        cursors = [txn.cursor(it) for it in dbs]
+        try:
+            if len(cursors) == 1:
+                yield cursors[0]
+            else:
+                yield cursors
+        finally:
+            for it in cursors:
+                it.close()
 
 
 def empty_rows(data, size):
@@ -127,3 +136,11 @@ def non_empty_rows(data, size):
     for k, v in data:
         if v.tobytes() != nanbuf:
             yield k, v
+
+
+def make_key(name):
+    return name[:8] + xxh64_digest(name)
+
+
+def make_key_u(name):
+    return name.encode()[:8] + xxh64_digest(name)

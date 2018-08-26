@@ -2,6 +2,7 @@ import os.path
 import array
 
 from hisser import db, blocks, metrics, agg
+from hisser.utils import make_key_u as mk
 
 
 def make_block(ts, resolution, size):
@@ -114,7 +115,9 @@ def test_storage_read_write(tmpdir):
 
     data = [(b'm1', array.array('d', [1, 2, 3]))]
     storage = db.Storage(data_dir, None, None, None, None, mi)
-    storage.new_block(data, 1000, 10, 3, [b'm2'])
+    p = storage.new_block(data, 1000, 10, 3, [b'm1'])
+    assert db.read_block_names(p) == [b'm1']
+    assert db.read_block_names(p + 'non-exists') == []
 
     info, data = reader.fetch([b'm1'], 500, 1500)
     assert info == (1000, 1030, 10)
@@ -133,7 +136,6 @@ def test_storage_read_write(tmpdir):
     info, data = reader.fetch([b'm1'], 500, 1030)
     assert info == (1000, 1030, 10)
     assert data == {b'm1': [1, 2, 3]}
-    # assert False
 
 
 def test_new_data_in_buffer(tmpdir):
@@ -149,7 +151,7 @@ def test_new_data_in_buffer(tmpdir):
     bl = blocks.BlockList(data_dir)
     bl.blocks('10')
 
-    data = [(b'm1', [1, 2, 3])]
+    data = [(mk('m1'), array.array('d', [1, 2, 3]))]
     db.new_block(data_dir, data, 1000, 10, 3, append=True)
 
     reader = db.Reader(bl, [(10, 10)], EmptyRpcClient)
@@ -175,6 +177,9 @@ def test_storage_house_work(tmpdir):
             max_gap_size=10, start=start
         )
 
+    def data(*names):
+        return [(it, array.array('d', [1, 2, 3, 4, 5])) for it in names]
+
     retentions = [(10, 150), (20, 300)]
     blocks.ensure_block_dirs(data_dir, retentions)
     bl = blocks.BlockList(data_dir)
@@ -182,11 +187,10 @@ def test_storage_house_work(tmpdir):
     storage = db.Storage(data_dir, retentions, merge_finder, downsample_finder, agg_rules, mi)
     storage.do_housework()
 
-    data = [(b'm1', [1, 2, 3, 4, 5])]
-    db.new_block(data_dir, data, 1000, 10, 5, append=True)
-    db.new_block(data_dir, data, 1050, 10, 5, append=True)
-    db.new_block(data_dir, data, 1100, 10, 5, append=True)
-    db.new_block(data_dir, data, 1150, 10, 5, append=True)
+    storage.new_block(data(b'm1', b'm2'), 1000, 10, 5, [])
+    storage.new_block(data(b'm2', b'm3'), 1050, 10, 5, [])
+    storage.new_block(data(b'm3', b'm4'), 1100, 10, 5, [])
+    storage.new_block(data(b'm4', b'm5'), 1150, 10, 5, [])
 
     storage.do_housework(1200)
 
@@ -194,21 +198,28 @@ def test_storage_house_work(tmpdir):
     assert b1.start == 1000
     assert b2.start == 1100
     assert b3.start == 1150
+    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3']
+    assert db.read_block_names(b2.path) == [b'm3', b'm4']
+    assert db.read_block_names(b3.path) == [b'm4', b'm5']
 
     b1, = bl.blocks(20)
     assert b1.start == 1000
     assert b1.end == 1200
     assert b1.size == 10
+    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
 
     storage.do_housework(1450)
     assert not bl.blocks(10, refresh=True)
 
     b1, = bl.blocks(20, refresh=True)
+    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
 
 
 def test_iter_dump(tmpdir):
     data_dir = str(tmpdir)
-    data = [('m{:06}'.format(r).encode(), [1, 2, 3, 4, 5]) for r in range(1000)]
+    data = [('m{:06}'.format(r).encode(),
+             array.array('d', [1, 2, 3, 4, 5]))
+            for r in range(1000)]
     blocks.ensure_block_dirs(data_dir, [(10, 10)])
     db.new_block(data_dir, data, 1000, 10, 5, append=True)
 

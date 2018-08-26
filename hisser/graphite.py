@@ -48,6 +48,13 @@ def profile(name):  # pragma: no cover
         print('##', name, real_duration, cpu_duration, flush=True)
 
 
+def profile_func(func):  # pragma: no cover
+    def inner(*args, **kwargs):
+        with profile(func.__name__):
+            return func(*args, **kwargs)
+    return inner
+
+
 def scream(fn):  # pragma: nocover
     def inner(*args, **kwargs):
         try:
@@ -161,5 +168,3 @@ class Finder(BaseFinder):
                 result.extend(r for r in values
                               if valuePrefix in r and r not in rset)
         return result
-
-

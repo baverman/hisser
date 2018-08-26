@@ -39,3 +39,8 @@ def test_open_env(tmpdir):
 
     with utils.open_env(str(tmpdir.join('boo')), map_size=-8192) as env:
         assert env.info()['map_size'] == 16384
+
+
+def test_make_key():
+    assert utils.make_key(b'boo.foo.bam') == b"boo.foo.'\r\xf8\xb3\x1a\x14\xfa\x18"
+    assert utils.make_key_u('boo.foo.bam') == b"boo.foo.'\r\xf8\xb3\x1a\x14\xfa\x18"

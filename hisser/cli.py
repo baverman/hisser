@@ -77,7 +77,7 @@ def cmd_dump_index(itype, index):
             print(k.decode(), v.decode(), sep='\t')
     elif itype == 'tag-names':
         for k, v in mi.iter_tag_names():
-            print(k.decode(), v.decode(), sep='\t')
+            print(k.decode(), v, sep='\t')
 
 
 @cli.command('backup', help='backup db file')

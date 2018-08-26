@@ -14,11 +14,14 @@ FROM base as deps
 RUN apk add python3-dev libffi-dev libressl-dev pcre-dev build-base linux-headers
 
 ARG GRAPHITE_VERSION
-ARG HISSER_VERSION
 ENV GRAPHITE_NO_PREFIX=True \
     PYTHONPATH=/pypkg/lib/python3.6/site-packages
+# ENV CFLAGS='-D MDB_MAXKEYSIZE=1023'
 
-RUN pip3 install --prefix=/pypkg uwsgi==2.0.17 ujson==1.35 graphite-web==$GRAPHITE_VERSION hisser==$HISSER_VERSION
+RUN pip3 install --prefix=/pypkg uwsgi==2.0.17 ujson==1.35 graphite-web==$GRAPHITE_VERSION
+COPY /hisser /pkg/hisser/
+COPY README.rst LICENSE setup.py /pkg/
+RUN pip3 install --prefix=/pypkg /pkg
 
 
 # Final image
