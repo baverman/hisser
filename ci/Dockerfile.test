@@ -2,4 +2,4 @@ ARG IMAGE
 FROM ${IMAGE}
 
 RUN apk --no-cache add build-base linux-headers libffi-dev sqlite-libs
-RUN GRAPHITE_NO_PREFIX=1 pip install pytest pytest-cov lmdb==0.93 msgpack==0.5.1 graphite-web==1.1.1 scandir
+RUN GRAPHITE_NO_PREFIX=1 pip install pytest pytest-cov lmdb==0.93 msgpack==0.5.1 graphite-web==1.1.1 xxhash

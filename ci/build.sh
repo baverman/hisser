@@ -3,4 +3,4 @@ set -e
 image=${1:?Python image is required}
 pyver=$(basename $image)
 docker build --build-arg IMAGE=$image -t hisser-$pyver -f ci/Dockerfile.test ci
-docker run --rm -w /build -u $UID:$GROUPS -v $PWD:/build hisser-$pyver py.test
+docker run --rm -w /build -u $UID:$GROUPS -v $PWD:/build hisser-$pyver sh -c "python setup.py build_ext --inplace && py.test"
