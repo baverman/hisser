@@ -209,7 +209,7 @@ class Server:
 
 
 class RpcClient:
-    def __init__(self, host_port=('127.0.0.1', 8002), connect_timeout=1, timeout=5):
+    def __init__(self, host_port=('127.0.0.1', 8002), connect_timeout=5, timeout=5):
         self.host_port = host_port
         self.connect_timeout = connect_timeout
         self.timeout = timeout

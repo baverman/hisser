@@ -41,7 +41,7 @@ def test_simple(tmpdir):
     t.daemon = True
     t.start()
 
-    start = time.time()
+    start = int(time.time())
     send_tcp([('m1', 10, start)])
     send_udp([('m2', 10, start)])
     send_tcp([('m3;tag=value', 10, start)])
@@ -75,6 +75,9 @@ def test_simple(tmpdir):
 
     result = f.auto_complete_values([], 'tag', 'v')
     assert result == ['value']
+
+    result = cfg.reader.fetch([b'm1', b'm0'], start - 60, start + 60)
+    assert result[1] == {b'm1': [None, 10.0, None]}
 
     cfg.server.time_to_exit = True
     time.sleep(3)

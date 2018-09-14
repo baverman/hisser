@@ -88,13 +88,17 @@ class Reader:
             add = [None] * ((ib.end - stop) // res)
             s_idx = size + (ib.start - stop) // res
             for name in keys:
+                values = cur_result.get(name)
                 row = result.get(name)
+                if not values and not row:
+                    continue
+
                 if row is None:
                     row = result[name] = [None] * size + add
                 else:
                     row += add
-                values = cur_result.get(name)
-                if values is not None:
+
+                if values:
                     row[s_idx: s_idx + ib.size] = [None if isnan(v) else v
                                                    for v in values[ib.idx:ib.idx+ib.size]]
             stop = ib.end
