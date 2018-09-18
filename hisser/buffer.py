@@ -108,7 +108,7 @@ class Buffer:
         names = self.names_to_check[-10000:]
         self.names_to_check = self.names_to_check[:-10000]
         d = self.data
-        for n in empty_rows(((k, d[k]) for k in names), self.size):
+        for n in empty_rows(((k, d[k]) for k in names)):
             del d[n]
 
     def add_internal_metrics(self, now):

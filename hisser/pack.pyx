@@ -3,6 +3,21 @@ from cpython cimport array
 import array
 from libc.string cimport memcpy
 from libc.stdint cimport uint32_t
+from libc.math cimport isnan
+
+
+cpdef array_is_empty(array.array data):
+    return _array_is_empty(data.data.as_doubles, len(data))
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef int _array_is_empty(double* data, size_t count) nogil:
+    cdef size_t i
+    for i in range(count):
+        if not isnan(data[i]):
+            return False
+    return True
 
 
 cpdef unpack(data, count):

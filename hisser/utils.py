@@ -1,7 +1,6 @@
 import os
 import sys
 import resource
-import array
 
 from time import time
 from functools import partial
@@ -12,6 +11,8 @@ from contextlib import contextmanager
 from xxhash import xxh64_digest
 import msgpack
 import lmdb
+
+from hisser.pack import array_is_empty
 
 NAN = float('nan')
 MB = 1 << 20
@@ -124,17 +125,15 @@ def txn_cursor(env, write=False, *dbs):
                 it.close()
 
 
-def empty_rows(data, size):
-    nanbuf = array.array('d', [NAN] * size).tobytes()
+def empty_rows(data):
     for k, v in data:
-        if v.tobytes() == nanbuf:
+        if array_is_empty(v):
             yield k
 
 
-def non_empty_rows(data, size):
-    nanbuf = array.array('d', [NAN] * size).tobytes()
+def non_empty_rows(data):
     for k, v in data:
-        if v.tobytes() != nanbuf:
+        if not array_is_empty(v):
             yield k, v
 
 

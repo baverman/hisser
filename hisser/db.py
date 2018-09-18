@@ -118,7 +118,7 @@ class Storage:
 
     def new_block(self, data, ts, resolution, size, new_names):
         self.new_names(new_names)
-        filtered = list(non_empty_rows(data, size))
+        filtered = list(non_empty_rows(data))
         if filtered:
             data = sorted((make_key(k), v) for k, v in filtered)
             path = new_block(self.data_dir, data, ts, resolution, size, append=True)

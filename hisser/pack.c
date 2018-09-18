@@ -579,6 +579,7 @@ static CYTHON_INLINE float __PYX_NAN() {
 #include <stdio.h>
 #include "pythread.h"
 #include <stdint.h>
+#include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* _OPENMP */
@@ -869,6 +870,12 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_GetAttrStr(PyObject* obj, PyObject
 /* GetBuiltinName.proto */
 static PyObject *__Pyx_GetBuiltinName(PyObject *name);
 
+/* ArgTypeTest.proto */
+#define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
+    ((likely((Py_TYPE(obj) == type) | (none_allowed && (obj == Py_None)))) ? 1 :\
+        __Pyx__ArgTypeTest(obj, type, name, exact))
+static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
+
 /* PyCFunctionFastCall.proto */
 #if CYTHON_FAST_PYCCALL
 static CYTHON_INLINE PyObject *__Pyx_PyCFunction_FastCall(PyObject *func, PyObject **args, Py_ssize_t nargs);
@@ -913,12 +920,6 @@ static void __Pyx_RaiseDoubleKeywordsError(const char* func_name, PyObject* kw_n
 static int __Pyx_ParseOptionalKeywords(PyObject *kwds, PyObject **argnames[],\
     PyObject *kwds2, PyObject *values[], Py_ssize_t num_pos_args,\
     const char* function_name);
-
-/* ArgTypeTest.proto */
-#define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
-    ((likely((Py_TYPE(obj) == type) | (none_allowed && (obj == Py_None)))) ? 1 :\
-        __Pyx__ArgTypeTest(obj, type, name, exact))
-static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
 
 /* Import.proto */
 static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
@@ -1101,13 +1102,16 @@ static CYTHON_INLINE int resize_smart(arrayobject *self, Py_ssize_t n) {
 #endif
 
 /* CIntToPy.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
+
+/* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_int(unsigned int value);
 
 /* CIntFromPy.proto */
-static CYTHON_INLINE unsigned int __Pyx_PyInt_As_unsigned_int(PyObject *);
+static CYTHON_INLINE size_t __Pyx_PyInt_As_size_t(PyObject *);
 
 /* CIntFromPy.proto */
-static CYTHON_INLINE size_t __Pyx_PyInt_As_size_t(PyObject *);
+static CYTHON_INLINE unsigned int __Pyx_PyInt_As_unsigned_int(PyObject *);
 
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_long(long value);
@@ -1246,7 +1250,11 @@ static CYTHON_INLINE int __pyx_f_7cpython_5array_extend_buffer(arrayobject *, ch
 
 /* Module declarations from 'libc.stdint' */
 
+/* Module declarations from 'libc.math' */
+
 /* Module declarations from 'hisser.pack' */
+static PyObject *__pyx_f_6hisser_4pack_array_is_empty(arrayobject *, int __pyx_skip_dispatch); /*proto*/
+static int __pyx_f_6hisser_4pack__array_is_empty(double *, size_t); /*proto*/
 static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *, PyObject *, int __pyx_skip_dispatch); /*proto*/
 static void __pyx_f_6hisser_4pack__decode(unsigned char *, size_t, unsigned char *); /*proto*/
 static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *, int, uint32_t); /*proto*/
@@ -1283,14 +1291,191 @@ static PyObject *__pyx_n_s_import;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_test;
-static PyObject *__pyx_pf_6hisser_4pack_unpack(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_data, PyObject *__pyx_v_count); /* proto */
-static PyObject *__pyx_pf_6hisser_4pack_2pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data); /* proto */
+static PyObject *__pyx_pf_6hisser_4pack_array_is_empty(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data); /* proto */
+static PyObject *__pyx_pf_6hisser_4pack_2unpack(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_data, PyObject *__pyx_v_count); /* proto */
+static PyObject *__pyx_pf_6hisser_4pack_4pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static PyObject *__pyx_int_8;
 /* Late includes */
 
-/* "hisser/pack.pyx":8
+/* "hisser/pack.pyx":9
+ * 
+ * 
+ * cpdef array_is_empty(array.array data):             # <<<<<<<<<<<<<<
+ *     return _array_is_empty(data.data.as_doubles, len(data))
+ * 
+ */
+
+static PyObject *__pyx_pw_6hisser_4pack_1array_is_empty(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
+static PyObject *__pyx_f_6hisser_4pack_array_is_empty(arrayobject *__pyx_v_data, CYTHON_UNUSED int __pyx_skip_dispatch) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  Py_ssize_t __pyx_t_1;
+  PyObject *__pyx_t_2 = NULL;
+  __Pyx_RefNannySetupContext("array_is_empty", 0);
+
+  /* "hisser/pack.pyx":10
+ * 
+ * cpdef array_is_empty(array.array data):
+ *     return _array_is_empty(data.data.as_doubles, len(data))             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __Pyx_XDECREF(__pyx_r);
+  if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 10, __pyx_L1_error)
+  }
+  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 10, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_f_6hisser_4pack__array_is_empty(__pyx_v_data->data.as_doubles, __pyx_t_1)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_r = __pyx_t_2;
+  __pyx_t_2 = 0;
+  goto __pyx_L0;
+
+  /* "hisser/pack.pyx":9
+ * 
+ * 
+ * cpdef array_is_empty(array.array data):             # <<<<<<<<<<<<<<
+ *     return _array_is_empty(data.data.as_doubles, len(data))
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_AddTraceback("hisser.pack.array_is_empty", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_6hisser_4pack_1array_is_empty(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_1array_is_empty(PyObject *__pyx_self, PyObject *__pyx_v_data) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("array_is_empty (wrapper)", 0);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), __pyx_ptype_7cpython_5array_array, 1, "data", 0))) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_r = __pyx_pf_6hisser_4pack_array_is_empty(__pyx_self, ((arrayobject *)__pyx_v_data));
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_6hisser_4pack_array_is_empty(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("array_is_empty", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __pyx_f_6hisser_4pack_array_is_empty(__pyx_v_data, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("hisser.pack.array_is_empty", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "hisser/pack.pyx":15
+ * @cython.boundscheck(False)
+ * @cython.wraparound(False)
+ * cdef int _array_is_empty(double* data, size_t count) nogil:             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     for i in range(count):
+ */
+
+static int __pyx_f_6hisser_4pack__array_is_empty(double *__pyx_v_data, size_t __pyx_v_count) {
+  size_t __pyx_v_i;
+  int __pyx_r;
+  size_t __pyx_t_1;
+  size_t __pyx_t_2;
+  size_t __pyx_t_3;
+  int __pyx_t_4;
+
+  /* "hisser/pack.pyx":17
+ * cdef int _array_is_empty(double* data, size_t count) nogil:
+ *     cdef size_t i
+ *     for i in range(count):             # <<<<<<<<<<<<<<
+ *         if not isnan(data[i]):
+ *             return False
+ */
+  __pyx_t_1 = __pyx_v_count;
+  __pyx_t_2 = __pyx_t_1;
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_i = __pyx_t_3;
+
+    /* "hisser/pack.pyx":18
+ *     cdef size_t i
+ *     for i in range(count):
+ *         if not isnan(data[i]):             # <<<<<<<<<<<<<<
+ *             return False
+ *     return True
+ */
+    __pyx_t_4 = ((!(isnan((__pyx_v_data[__pyx_v_i])) != 0)) != 0);
+    if (__pyx_t_4) {
+
+      /* "hisser/pack.pyx":19
+ *     for i in range(count):
+ *         if not isnan(data[i]):
+ *             return False             # <<<<<<<<<<<<<<
+ *     return True
+ * 
+ */
+      __pyx_r = 0;
+      goto __pyx_L0;
+
+      /* "hisser/pack.pyx":18
+ *     cdef size_t i
+ *     for i in range(count):
+ *         if not isnan(data[i]):             # <<<<<<<<<<<<<<
+ *             return False
+ *     return True
+ */
+    }
+  }
+
+  /* "hisser/pack.pyx":20
+ *         if not isnan(data[i]):
+ *             return False
+ *     return True             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __pyx_r = 1;
+  goto __pyx_L0;
+
+  /* "hisser/pack.pyx":15
+ * @cython.boundscheck(False)
+ * @cython.wraparound(False)
+ * cdef int _array_is_empty(double* data, size_t count) nogil:             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     for i in range(count):
+ */
+
+  /* function exit code */
+  __pyx_L0:;
+  return __pyx_r;
+}
+
+/* "hisser/pack.pyx":23
  * 
  * 
  * cpdef unpack(data, count):             # <<<<<<<<<<<<<<
@@ -1298,7 +1483,7 @@ static PyObject *__pyx_int_8;
  *     cdef array.array buf = array.array('B', data)
  */
 
-static PyObject *__pyx_pw_6hisser_4pack_1unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_3unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
 static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *__pyx_v_count, CYTHON_UNUSED int __pyx_skip_dispatch) {
   arrayobject *__pyx_v_result = 0;
   arrayobject *__pyx_v_buf = 0;
@@ -1309,19 +1494,19 @@ static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *
   Py_ssize_t __pyx_t_3;
   __Pyx_RefNannySetupContext("unpack", 0);
 
-  /* "hisser/pack.pyx":9
+  /* "hisser/pack.pyx":24
  * 
  * cpdef unpack(data, count):
  *     cdef array.array result = array.array('d', bytes(count*8))             # <<<<<<<<<<<<<<
  *     cdef array.array buf = array.array('B', data)
  *     _decode(buf.data.as_uchars, len(data), result.data.as_uchars)
  */
-  __pyx_t_1 = PyNumber_Multiply(__pyx_v_count, __pyx_int_8); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_t_1 = PyNumber_Multiply(__pyx_v_count, __pyx_int_8); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -1329,20 +1514,20 @@ static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_t_2);
   __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 9, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_result = ((arrayobject *)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "hisser/pack.pyx":10
+  /* "hisser/pack.pyx":25
  * cpdef unpack(data, count):
  *     cdef array.array result = array.array('d', bytes(count*8))
  *     cdef array.array buf = array.array('B', data)             # <<<<<<<<<<<<<<
  *     _decode(buf.data.as_uchars, len(data), result.data.as_uchars)
  *     return result
  */
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 25, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_B);
   __Pyx_GIVEREF(__pyx_n_s_B);
@@ -1350,23 +1535,23 @@ static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *
   __Pyx_INCREF(__pyx_v_data);
   __Pyx_GIVEREF(__pyx_v_data);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_v_data);
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 10, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_buf = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "hisser/pack.pyx":11
+  /* "hisser/pack.pyx":26
  *     cdef array.array result = array.array('d', bytes(count*8))
  *     cdef array.array buf = array.array('B', data)
  *     _decode(buf.data.as_uchars, len(data), result.data.as_uchars)             # <<<<<<<<<<<<<<
  *     return result
  * 
  */
-  __pyx_t_3 = PyObject_Length(__pyx_v_data); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 11, __pyx_L1_error)
+  __pyx_t_3 = PyObject_Length(__pyx_v_data); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 26, __pyx_L1_error)
   __pyx_f_6hisser_4pack__decode(__pyx_v_buf->data.as_uchars, __pyx_t_3, __pyx_v_result->data.as_uchars);
 
-  /* "hisser/pack.pyx":12
+  /* "hisser/pack.pyx":27
  *     cdef array.array buf = array.array('B', data)
  *     _decode(buf.data.as_uchars, len(data), result.data.as_uchars)
  *     return result             # <<<<<<<<<<<<<<
@@ -1378,7 +1563,7 @@ static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *
   __pyx_r = ((PyObject *)__pyx_v_result);
   goto __pyx_L0;
 
-  /* "hisser/pack.pyx":8
+  /* "hisser/pack.pyx":23
  * 
  * 
  * cpdef unpack(data, count):             # <<<<<<<<<<<<<<
@@ -1401,8 +1586,8 @@ static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *__pyx_v_data, PyObject *
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_6hisser_4pack_1unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyObject *__pyx_pw_6hisser_4pack_1unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_6hisser_4pack_3unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_3unpack(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_data = 0;
   PyObject *__pyx_v_count = 0;
   PyObject *__pyx_r = 0;
@@ -1431,11 +1616,11 @@ static PyObject *__pyx_pw_6hisser_4pack_1unpack(PyObject *__pyx_self, PyObject *
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_count)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("unpack", 1, 2, 2, 1); __PYX_ERR(0, 8, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("unpack", 1, 2, 2, 1); __PYX_ERR(0, 23, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "unpack") < 0)) __PYX_ERR(0, 8, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "unpack") < 0)) __PYX_ERR(0, 23, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -1448,26 +1633,26 @@ static PyObject *__pyx_pw_6hisser_4pack_1unpack(PyObject *__pyx_self, PyObject *
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("unpack", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 8, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("unpack", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 23, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("hisser.pack.unpack", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_6hisser_4pack_unpack(__pyx_self, __pyx_v_data, __pyx_v_count);
+  __pyx_r = __pyx_pf_6hisser_4pack_2unpack(__pyx_self, __pyx_v_data, __pyx_v_count);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6hisser_4pack_unpack(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_data, PyObject *__pyx_v_count) {
+static PyObject *__pyx_pf_6hisser_4pack_2unpack(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_data, PyObject *__pyx_v_count) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("unpack", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_6hisser_4pack_unpack(__pyx_v_data, __pyx_v_count, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_6hisser_4pack_unpack(__pyx_v_data, __pyx_v_count, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -1484,7 +1669,7 @@ static PyObject *__pyx_pf_6hisser_4pack_unpack(CYTHON_UNUSED PyObject *__pyx_sel
   return __pyx_r;
 }
 
-/* "hisser/pack.pyx":18
+/* "hisser/pack.pyx":33
  * @cython.wraparound(False)
  * @cython.cdivision(True)
  * cdef void _decode(unsigned char *data, size_t data_len, unsigned char *result) nogil:             # <<<<<<<<<<<<<<
@@ -1503,7 +1688,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
   unsigned int __pyx_t_3;
   unsigned int __pyx_t_4;
 
-  /* "hisser/pack.pyx":19
+  /* "hisser/pack.pyx":34
  * @cython.cdivision(True)
  * cdef void _decode(unsigned char *data, size_t data_len, unsigned char *result) nogil:
  *     cdef size_t c = 0             # <<<<<<<<<<<<<<
@@ -1512,7 +1697,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
   __pyx_v_c = 0;
 
-  /* "hisser/pack.pyx":20
+  /* "hisser/pack.pyx":35
  * cdef void _decode(unsigned char *data, size_t data_len, unsigned char *result) nogil:
  *     cdef size_t c = 0
  *     cdef size_t rc = 0             # <<<<<<<<<<<<<<
@@ -1521,7 +1706,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
   __pyx_v_rc = 0;
 
-  /* "hisser/pack.pyx":21
+  /* "hisser/pack.pyx":36
  *     cdef size_t c = 0
  *     cdef size_t rc = 0
  *     cdef unsigned int num = 0             # <<<<<<<<<<<<<<
@@ -1530,7 +1715,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
   __pyx_v_num = 0;
 
-  /* "hisser/pack.pyx":22
+  /* "hisser/pack.pyx":37
  *     cdef size_t rc = 0
  *     cdef unsigned int num = 0
  *     cdef int t = 0             # <<<<<<<<<<<<<<
@@ -1539,7 +1724,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
   __pyx_v_t = 0;
 
-  /* "hisser/pack.pyx":23
+  /* "hisser/pack.pyx":38
  *     cdef unsigned int num = 0
  *     cdef int t = 0
  *     while c < data_len:             # <<<<<<<<<<<<<<
@@ -1550,7 +1735,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
     __pyx_t_1 = ((__pyx_v_c < __pyx_v_data_len) != 0);
     if (!__pyx_t_1) break;
 
-    /* "hisser/pack.pyx":24
+    /* "hisser/pack.pyx":39
  *     cdef int t = 0
  *     while c < data_len:
  *         t = data[c] & 0xc0             # <<<<<<<<<<<<<<
@@ -1559,7 +1744,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
     __pyx_v_t = ((__pyx_v_data[__pyx_v_c]) & 0xc0);
 
-    /* "hisser/pack.pyx":25
+    /* "hisser/pack.pyx":40
  *     while c < data_len:
  *         t = data[c] & 0xc0
  *         if t == 0 or t == 64:             # <<<<<<<<<<<<<<
@@ -1570,7 +1755,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
       case 0:
       case 64:
 
-      /* "hisser/pack.pyx":26
+      /* "hisser/pack.pyx":41
  *         t = data[c] & 0xc0
  *         if t == 0 or t == 64:
  *             num = data[c]             # <<<<<<<<<<<<<<
@@ -1579,7 +1764,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_num = (__pyx_v_data[__pyx_v_c]);
 
-      /* "hisser/pack.pyx":27
+      /* "hisser/pack.pyx":42
  *         if t == 0 or t == 64:
  *             num = data[c]
  *             c += 1             # <<<<<<<<<<<<<<
@@ -1588,7 +1773,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_c = (__pyx_v_c + 1);
 
-      /* "hisser/pack.pyx":25
+      /* "hisser/pack.pyx":40
  *     while c < data_len:
  *         t = data[c] & 0xc0
  *         if t == 0 or t == 64:             # <<<<<<<<<<<<<<
@@ -1597,7 +1782,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       break;
 
-      /* "hisser/pack.pyx":28
+      /* "hisser/pack.pyx":43
  *             num = data[c]
  *             c += 1
  *         elif t == 0x80:             # <<<<<<<<<<<<<<
@@ -1606,7 +1791,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       case 0x80:
 
-      /* "hisser/pack.pyx":29
+      /* "hisser/pack.pyx":44
  *             c += 1
  *         elif t == 0x80:
  *             num = ((data[c] << 8) + data[c+1]) & 0x3fff             # <<<<<<<<<<<<<<
@@ -1615,7 +1800,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_num = ((((__pyx_v_data[__pyx_v_c]) << 8) + (__pyx_v_data[(__pyx_v_c + 1)])) & 0x3fff);
 
-      /* "hisser/pack.pyx":30
+      /* "hisser/pack.pyx":45
  *         elif t == 0x80:
  *             num = ((data[c] << 8) + data[c+1]) & 0x3fff
  *             c += 2             # <<<<<<<<<<<<<<
@@ -1624,7 +1809,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_c = (__pyx_v_c + 2);
 
-      /* "hisser/pack.pyx":28
+      /* "hisser/pack.pyx":43
  *             num = data[c]
  *             c += 1
  *         elif t == 0x80:             # <<<<<<<<<<<<<<
@@ -1633,7 +1818,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       break;
 
-      /* "hisser/pack.pyx":31
+      /* "hisser/pack.pyx":46
  *             num = ((data[c] << 8) + data[c+1]) & 0x3fff
  *             c += 2
  *         elif t == 0xc0:             # <<<<<<<<<<<<<<
@@ -1642,7 +1827,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       case 0xc0:
 
-      /* "hisser/pack.pyx":32
+      /* "hisser/pack.pyx":47
  *             c += 2
  *         elif t == 0xc0:
  *             num = ((data[c] << 24) + (data[c+1] << 16) + (data[c+2] << 8) + data[c+3]) & 0x3fffffff             # <<<<<<<<<<<<<<
@@ -1651,7 +1836,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_num = ((((((__pyx_v_data[__pyx_v_c]) << 24) + ((__pyx_v_data[(__pyx_v_c + 1)]) << 16)) + ((__pyx_v_data[(__pyx_v_c + 2)]) << 8)) + (__pyx_v_data[(__pyx_v_c + 3)])) & 0x3fffffff);
 
-      /* "hisser/pack.pyx":33
+      /* "hisser/pack.pyx":48
  *         elif t == 0xc0:
  *             num = ((data[c] << 24) + (data[c+1] << 16) + (data[c+2] << 8) + data[c+3]) & 0x3fffffff
  *             c += 4             # <<<<<<<<<<<<<<
@@ -1660,7 +1845,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_c = (__pyx_v_c + 4);
 
-      /* "hisser/pack.pyx":31
+      /* "hisser/pack.pyx":46
  *             num = ((data[c] << 8) + data[c+1]) & 0x3fff
  *             c += 2
  *         elif t == 0xc0:             # <<<<<<<<<<<<<<
@@ -1671,7 +1856,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
       default: break;
     }
 
-    /* "hisser/pack.pyx":35
+    /* "hisser/pack.pyx":50
  *             c += 4
  * 
  *         t = num % 2             # <<<<<<<<<<<<<<
@@ -1680,7 +1865,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
     __pyx_v_t = (__pyx_v_num % 2);
 
-    /* "hisser/pack.pyx":36
+    /* "hisser/pack.pyx":51
  * 
  *         t = num % 2
  *         num = num >> 1             # <<<<<<<<<<<<<<
@@ -1689,7 +1874,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
     __pyx_v_num = (__pyx_v_num >> 1);
 
-    /* "hisser/pack.pyx":39
+    /* "hisser/pack.pyx":54
  *         # print('decode', t, num, c)
  * 
  *         if t:             # <<<<<<<<<<<<<<
@@ -1699,7 +1884,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
     __pyx_t_1 = (__pyx_v_t != 0);
     if (__pyx_t_1) {
 
-      /* "hisser/pack.pyx":40
+      /* "hisser/pack.pyx":55
  * 
  *         if t:
  *             for _ in range(num):             # <<<<<<<<<<<<<<
@@ -1711,7 +1896,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
       for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
         __pyx_v__ = __pyx_t_4;
 
-        /* "hisser/pack.pyx":41
+        /* "hisser/pack.pyx":56
  *         if t:
  *             for _ in range(num):
  *                 memcpy(result + rc, data + c, 8)             # <<<<<<<<<<<<<<
@@ -1720,7 +1905,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
         (void)(memcpy((__pyx_v_result + __pyx_v_rc), (__pyx_v_data + __pyx_v_c), 8));
 
-        /* "hisser/pack.pyx":42
+        /* "hisser/pack.pyx":57
  *             for _ in range(num):
  *                 memcpy(result + rc, data + c, 8)
  *                 rc += 8             # <<<<<<<<<<<<<<
@@ -1730,7 +1915,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
         __pyx_v_rc = (__pyx_v_rc + 8);
       }
 
-      /* "hisser/pack.pyx":43
+      /* "hisser/pack.pyx":58
  *                 memcpy(result + rc, data + c, 8)
  *                 rc += 8
  *             c += 8             # <<<<<<<<<<<<<<
@@ -1739,7 +1924,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_c = (__pyx_v_c + 8);
 
-      /* "hisser/pack.pyx":39
+      /* "hisser/pack.pyx":54
  *         # print('decode', t, num, c)
  * 
  *         if t:             # <<<<<<<<<<<<<<
@@ -1749,7 +1934,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
       goto __pyx_L5;
     }
 
-    /* "hisser/pack.pyx":45
+    /* "hisser/pack.pyx":60
  *             c += 8
  *         else:
  *             memcpy(result + rc, data + c, 8*num)             # <<<<<<<<<<<<<<
@@ -1759,7 +1944,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
     /*else*/ {
       (void)(memcpy((__pyx_v_result + __pyx_v_rc), (__pyx_v_data + __pyx_v_c), (8 * __pyx_v_num)));
 
-      /* "hisser/pack.pyx":46
+      /* "hisser/pack.pyx":61
  *         else:
  *             memcpy(result + rc, data + c, 8*num)
  *             rc += 8 * num             # <<<<<<<<<<<<<<
@@ -1768,7 +1953,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
  */
       __pyx_v_rc = (__pyx_v_rc + (8 * __pyx_v_num));
 
-      /* "hisser/pack.pyx":47
+      /* "hisser/pack.pyx":62
  *             memcpy(result + rc, data + c, 8*num)
  *             rc += 8 * num
  *             c += 8 * num             # <<<<<<<<<<<<<<
@@ -1780,7 +1965,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
     __pyx_L5:;
   }
 
-  /* "hisser/pack.pyx":18
+  /* "hisser/pack.pyx":33
  * @cython.wraparound(False)
  * @cython.cdivision(True)
  * cdef void _decode(unsigned char *data, size_t data_len, unsigned char *result) nogil:             # <<<<<<<<<<<<<<
@@ -1791,7 +1976,7 @@ static void __pyx_f_6hisser_4pack__decode(unsigned char *__pyx_v_data, size_t __
   /* function exit code */
 }
 
-/* "hisser/pack.pyx":50
+/* "hisser/pack.pyx":65
  * 
  * 
  * cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogil:             # <<<<<<<<<<<<<<
@@ -1803,7 +1988,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   int __pyx_r;
   int __pyx_t_1;
 
-  /* "hisser/pack.pyx":51
+  /* "hisser/pack.pyx":66
  * 
  * cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogil:
  *     if num < 0x80:             # <<<<<<<<<<<<<<
@@ -1813,7 +1998,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   __pyx_t_1 = ((__pyx_v_num < 0x80) != 0);
   if (__pyx_t_1) {
 
-    /* "hisser/pack.pyx":52
+    /* "hisser/pack.pyx":67
  * cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogil:
  *     if num < 0x80:
  *         buf[offset] = num             # <<<<<<<<<<<<<<
@@ -1822,7 +2007,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[__pyx_v_offset]) = __pyx_v_num;
 
-    /* "hisser/pack.pyx":53
+    /* "hisser/pack.pyx":68
  *     if num < 0x80:
  *         buf[offset] = num
  *         return offset + 1             # <<<<<<<<<<<<<<
@@ -1832,7 +2017,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
     __pyx_r = (__pyx_v_offset + 1);
     goto __pyx_L0;
 
-    /* "hisser/pack.pyx":51
+    /* "hisser/pack.pyx":66
  * 
  * cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogil:
  *     if num < 0x80:             # <<<<<<<<<<<<<<
@@ -1841,7 +2026,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
   }
 
-  /* "hisser/pack.pyx":54
+  /* "hisser/pack.pyx":69
  *         buf[offset] = num
  *         return offset + 1
  *     elif num < 0x4000:             # <<<<<<<<<<<<<<
@@ -1851,7 +2036,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   __pyx_t_1 = ((__pyx_v_num < 0x4000) != 0);
   if (__pyx_t_1) {
 
-    /* "hisser/pack.pyx":55
+    /* "hisser/pack.pyx":70
  *         return offset + 1
  *     elif num < 0x4000:
  *         num = num | 0x8000             # <<<<<<<<<<<<<<
@@ -1860,7 +2045,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     __pyx_v_num = (__pyx_v_num | 0x8000);
 
-    /* "hisser/pack.pyx":56
+    /* "hisser/pack.pyx":71
  *     elif num < 0x4000:
  *         num = num | 0x8000
  *         buf[offset+1] = num & 0xff             # <<<<<<<<<<<<<<
@@ -1869,7 +2054,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[(__pyx_v_offset + 1)]) = (__pyx_v_num & 0xff);
 
-    /* "hisser/pack.pyx":57
+    /* "hisser/pack.pyx":72
  *         num = num | 0x8000
  *         buf[offset+1] = num & 0xff
  *         buf[offset] = num >> 8             # <<<<<<<<<<<<<<
@@ -1878,7 +2063,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[__pyx_v_offset]) = (__pyx_v_num >> 8);
 
-    /* "hisser/pack.pyx":58
+    /* "hisser/pack.pyx":73
  *         buf[offset+1] = num & 0xff
  *         buf[offset] = num >> 8
  *         return offset + 2             # <<<<<<<<<<<<<<
@@ -1888,7 +2073,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
     __pyx_r = (__pyx_v_offset + 2);
     goto __pyx_L0;
 
-    /* "hisser/pack.pyx":54
+    /* "hisser/pack.pyx":69
  *         buf[offset] = num
  *         return offset + 1
  *     elif num < 0x4000:             # <<<<<<<<<<<<<<
@@ -1897,7 +2082,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
   }
 
-  /* "hisser/pack.pyx":59
+  /* "hisser/pack.pyx":74
  *         buf[offset] = num >> 8
  *         return offset + 2
  *     elif num < 0x40000000ul:             # <<<<<<<<<<<<<<
@@ -1907,7 +2092,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   __pyx_t_1 = ((__pyx_v_num < 0x40000000UL) != 0);
   if (__pyx_t_1) {
 
-    /* "hisser/pack.pyx":60
+    /* "hisser/pack.pyx":75
  *         return offset + 2
  *     elif num < 0x40000000ul:
  *         num = num | 0xc0000000ul             # <<<<<<<<<<<<<<
@@ -1916,7 +2101,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     __pyx_v_num = (__pyx_v_num | 0xc0000000UL);
 
-    /* "hisser/pack.pyx":61
+    /* "hisser/pack.pyx":76
  *     elif num < 0x40000000ul:
  *         num = num | 0xc0000000ul
  *         buf[offset+3] = num & 0xff             # <<<<<<<<<<<<<<
@@ -1925,7 +2110,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[(__pyx_v_offset + 3)]) = (__pyx_v_num & 0xff);
 
-    /* "hisser/pack.pyx":62
+    /* "hisser/pack.pyx":77
  *         num = num | 0xc0000000ul
  *         buf[offset+3] = num & 0xff
  *         buf[offset+2] = (num >> 8) & 0xff             # <<<<<<<<<<<<<<
@@ -1934,7 +2119,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[(__pyx_v_offset + 2)]) = ((__pyx_v_num >> 8) & 0xff);
 
-    /* "hisser/pack.pyx":63
+    /* "hisser/pack.pyx":78
  *         buf[offset+3] = num & 0xff
  *         buf[offset+2] = (num >> 8) & 0xff
  *         buf[offset+1] = (num >> 16) & 0xff             # <<<<<<<<<<<<<<
@@ -1943,7 +2128,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[(__pyx_v_offset + 1)]) = ((__pyx_v_num >> 16) & 0xff);
 
-    /* "hisser/pack.pyx":64
+    /* "hisser/pack.pyx":79
  *         buf[offset+2] = (num >> 8) & 0xff
  *         buf[offset+1] = (num >> 16) & 0xff
  *         buf[offset] = num >> 24             # <<<<<<<<<<<<<<
@@ -1952,7 +2137,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
     (__pyx_v_buf[__pyx_v_offset]) = (__pyx_v_num >> 24);
 
-    /* "hisser/pack.pyx":65
+    /* "hisser/pack.pyx":80
  *         buf[offset+1] = (num >> 16) & 0xff
  *         buf[offset] = num >> 24
  *         return offset + 4             # <<<<<<<<<<<<<<
@@ -1962,7 +2147,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
     __pyx_r = (__pyx_v_offset + 4);
     goto __pyx_L0;
 
-    /* "hisser/pack.pyx":59
+    /* "hisser/pack.pyx":74
  *         buf[offset] = num >> 8
  *         return offset + 2
  *     elif num < 0x40000000ul:             # <<<<<<<<<<<<<<
@@ -1971,7 +2156,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  */
   }
 
-  /* "hisser/pack.pyx":66
+  /* "hisser/pack.pyx":81
  *         buf[offset] = num >> 24
  *         return offset + 4
  *     return 0             # <<<<<<<<<<<<<<
@@ -1981,7 +2166,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   __pyx_r = 0;
   goto __pyx_L0;
 
-  /* "hisser/pack.pyx":50
+  /* "hisser/pack.pyx":65
  * 
  * 
  * cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogil:             # <<<<<<<<<<<<<<
@@ -1994,7 +2179,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
   return __pyx_r;
 }
 
-/* "hisser/pack.pyx":69
+/* "hisser/pack.pyx":84
  * 
  * 
  * cpdef pack(array.array data):             # <<<<<<<<<<<<<<
@@ -2002,7 +2187,7 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
  *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
  */
 
-static PyObject *__pyx_pw_6hisser_4pack_3pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_5pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
 static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UNUSED int __pyx_skip_dispatch) {
   arrayobject *__pyx_v_result = 0;
   arrayobject *__pyx_v_buf = 0;
@@ -2015,7 +2200,7 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   int __pyx_t_4;
   __Pyx_RefNannySetupContext("pack", 0);
 
-  /* "hisser/pack.pyx":70
+  /* "hisser/pack.pyx":85
  * 
  * cpdef pack(array.array data):
  *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))             # <<<<<<<<<<<<<<
@@ -2024,15 +2209,15 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
  */
   if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 70, __pyx_L1_error)
+    __PYX_ERR(0, 85, __pyx_L1_error)
   }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 70, __pyx_L1_error)
-  __pyx_t_2 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 85, __pyx_L1_error)
+  __pyx_t_2 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 85, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 85, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 85, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_B);
   __Pyx_GIVEREF(__pyx_n_s_B);
@@ -2040,13 +2225,13 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_3);
   __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 85, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_result = ((arrayobject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "hisser/pack.pyx":71
+  /* "hisser/pack.pyx":86
  * cpdef pack(array.array data):
  *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
  *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))             # <<<<<<<<<<<<<<
@@ -2055,15 +2240,15 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
  */
   if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 71, __pyx_L1_error)
+    __PYX_ERR(0, 86, __pyx_L1_error)
   }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 71, __pyx_L1_error)
-  __pyx_t_3 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 86, __pyx_L1_error)
+  __pyx_t_3 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 86, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 86, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 86, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_n_s_Q);
   __Pyx_GIVEREF(__pyx_n_s_Q);
@@ -2071,13 +2256,13 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   __Pyx_GIVEREF(__pyx_t_2);
   PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_t_2);
   __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 86, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_buf = ((arrayobject *)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "hisser/pack.pyx":72
+  /* "hisser/pack.pyx":87
  *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
  *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
  *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)             # <<<<<<<<<<<<<<
@@ -2086,21 +2271,21 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
  */
   if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 72, __pyx_L1_error)
+    __PYX_ERR(0, 87, __pyx_L1_error)
   }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 87, __pyx_L1_error)
   __pyx_v_offset = __pyx_f_6hisser_4pack__encode(__pyx_v_data->data.as_ulonglongs, __pyx_t_1, __pyx_v_result->data.as_uchars, __pyx_v_buf->data.as_ulonglongs);
 
-  /* "hisser/pack.pyx":73
+  /* "hisser/pack.pyx":88
  *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
  *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
  *     array.resize(result, offset)             # <<<<<<<<<<<<<<
  *     return result
  * 
  */
-  __pyx_t_4 = resize(__pyx_v_result, __pyx_v_offset); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_4 = resize(__pyx_v_result, __pyx_v_offset); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 88, __pyx_L1_error)
 
-  /* "hisser/pack.pyx":74
+  /* "hisser/pack.pyx":89
  *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
  *     array.resize(result, offset)
  *     return result             # <<<<<<<<<<<<<<
@@ -2112,7 +2297,7 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   __pyx_r = ((PyObject *)__pyx_v_result);
   goto __pyx_L0;
 
-  /* "hisser/pack.pyx":69
+  /* "hisser/pack.pyx":84
  * 
  * 
  * cpdef pack(array.array data):             # <<<<<<<<<<<<<<
@@ -2135,13 +2320,13 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_6hisser_4pack_3pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
-static PyObject *__pyx_pw_6hisser_4pack_3pack(PyObject *__pyx_self, PyObject *__pyx_v_data) {
+static PyObject *__pyx_pw_6hisser_4pack_5pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_5pack(PyObject *__pyx_self, PyObject *__pyx_v_data) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("pack (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), __pyx_ptype_7cpython_5array_array, 1, "data", 0))) __PYX_ERR(0, 69, __pyx_L1_error)
-  __pyx_r = __pyx_pf_6hisser_4pack_2pack(__pyx_self, ((arrayobject *)__pyx_v_data));
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), __pyx_ptype_7cpython_5array_array, 1, "data", 0))) __PYX_ERR(0, 84, __pyx_L1_error)
+  __pyx_r = __pyx_pf_6hisser_4pack_4pack(__pyx_self, ((arrayobject *)__pyx_v_data));
 
   /* function exit code */
   goto __pyx_L0;
@@ -2152,13 +2337,13 @@ static PyObject *__pyx_pw_6hisser_4pack_3pack(PyObject *__pyx_self, PyObject *__
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6hisser_4pack_2pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data) {
+static PyObject *__pyx_pf_6hisser_4pack_4pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_6hisser_4pack_pack(__pyx_v_data, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 69, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_6hisser_4pack_pack(__pyx_v_data, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 84, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -2175,7 +2360,7 @@ static PyObject *__pyx_pf_6hisser_4pack_2pack(CYTHON_UNUSED PyObject *__pyx_self
   return __pyx_r;
 }
 
-/* "hisser/pack.pyx":80
+/* "hisser/pack.pyx":95
  * @cython.wraparound(False)
  * @cython.cdivision(True)
  * cdef size_t _encode(unsigned long long *data, size_t count,             # <<<<<<<<<<<<<<
@@ -2196,7 +2381,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
   size_t __pyx_t_3;
   int __pyx_t_4;
 
-  /* "hisser/pack.pyx":83
+  /* "hisser/pack.pyx":98
  *                     unsigned char *result,
  *                     unsigned long long *buf) nogil:
  *     cdef size_t i = 0             # <<<<<<<<<<<<<<
@@ -2205,7 +2390,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   __pyx_v_i = 0;
 
-  /* "hisser/pack.pyx":84
+  /* "hisser/pack.pyx":99
  *                     unsigned long long *buf) nogil:
  *     cdef size_t i = 0
  *     cdef size_t buf_count = 0             # <<<<<<<<<<<<<<
@@ -2214,7 +2399,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   __pyx_v_buf_count = 0;
 
-  /* "hisser/pack.pyx":85
+  /* "hisser/pack.pyx":100
  *     cdef size_t i = 0
  *     cdef size_t buf_count = 0
  *     cdef size_t rcount = 0             # <<<<<<<<<<<<<<
@@ -2223,7 +2408,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   __pyx_v_rcount = 0;
 
-  /* "hisser/pack.pyx":86
+  /* "hisser/pack.pyx":101
  *     cdef size_t buf_count = 0
  *     cdef size_t rcount = 0
  *     cdef size_t offset = 0             # <<<<<<<<<<<<<<
@@ -2232,7 +2417,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   __pyx_v_offset = 0;
 
-  /* "hisser/pack.pyx":87
+  /* "hisser/pack.pyx":102
  *     cdef size_t rcount = 0
  *     cdef size_t offset = 0
  *     cdef unsigned long long prev = 0             # <<<<<<<<<<<<<<
@@ -2241,7 +2426,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   __pyx_v_prev = 0;
 
-  /* "hisser/pack.pyx":89
+  /* "hisser/pack.pyx":104
  *     cdef unsigned long long prev = 0
  *     cdef unsigned long long val
  *     for i in range(count):             # <<<<<<<<<<<<<<
@@ -2253,7 +2438,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "hisser/pack.pyx":90
+    /* "hisser/pack.pyx":105
  *     cdef unsigned long long val
  *     for i in range(count):
  *         val = data[i]             # <<<<<<<<<<<<<<
@@ -2262,7 +2447,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
     __pyx_v_val = (__pyx_v_data[__pyx_v_i]);
 
-    /* "hisser/pack.pyx":91
+    /* "hisser/pack.pyx":106
  *     for i in range(count):
  *         val = data[i]
  *         if not rcount:             # <<<<<<<<<<<<<<
@@ -2272,7 +2457,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     __pyx_t_4 = ((!(__pyx_v_rcount != 0)) != 0);
     if (__pyx_t_4) {
 
-      /* "hisser/pack.pyx":92
+      /* "hisser/pack.pyx":107
  *         val = data[i]
  *         if not rcount:
  *             prev = val             # <<<<<<<<<<<<<<
@@ -2281,7 +2466,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_prev = __pyx_v_val;
 
-      /* "hisser/pack.pyx":93
+      /* "hisser/pack.pyx":108
  *         if not rcount:
  *             prev = val
  *             rcount += 1             # <<<<<<<<<<<<<<
@@ -2290,7 +2475,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_rcount = (__pyx_v_rcount + 1);
 
-      /* "hisser/pack.pyx":94
+      /* "hisser/pack.pyx":109
  *             prev = val
  *             rcount += 1
  *             continue             # <<<<<<<<<<<<<<
@@ -2299,7 +2484,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       goto __pyx_L3_continue;
 
-      /* "hisser/pack.pyx":91
+      /* "hisser/pack.pyx":106
  *     for i in range(count):
  *         val = data[i]
  *         if not rcount:             # <<<<<<<<<<<<<<
@@ -2308,7 +2493,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
     }
 
-    /* "hisser/pack.pyx":96
+    /* "hisser/pack.pyx":111
  *             continue
  * 
  *         if prev == val:             # <<<<<<<<<<<<<<
@@ -2318,7 +2503,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     __pyx_t_4 = ((__pyx_v_prev == __pyx_v_val) != 0);
     if (__pyx_t_4) {
 
-      /* "hisser/pack.pyx":97
+      /* "hisser/pack.pyx":112
  * 
  *         if prev == val:
  *             rcount += 1             # <<<<<<<<<<<<<<
@@ -2327,7 +2512,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_rcount = (__pyx_v_rcount + 1);
 
-      /* "hisser/pack.pyx":96
+      /* "hisser/pack.pyx":111
  *             continue
  * 
  *         if prev == val:             # <<<<<<<<<<<<<<
@@ -2337,7 +2522,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
       goto __pyx_L6;
     }
 
-    /* "hisser/pack.pyx":99
+    /* "hisser/pack.pyx":114
  *             rcount += 1
  *         else:
  *             if rcount > 1:             # <<<<<<<<<<<<<<
@@ -2348,7 +2533,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
       __pyx_t_4 = ((__pyx_v_rcount > 1) != 0);
       if (__pyx_t_4) {
 
-        /* "hisser/pack.pyx":100
+        /* "hisser/pack.pyx":115
  *         else:
  *             if rcount > 1:
  *                 if buf_count:             # <<<<<<<<<<<<<<
@@ -2358,7 +2543,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
         __pyx_t_4 = (__pyx_v_buf_count != 0);
         if (__pyx_t_4) {
 
-          /* "hisser/pack.pyx":102
+          /* "hisser/pack.pyx":117
  *                 if buf_count:
  *                     # print('encode', 0, buf_count, offset)
  *                     offset = encode_varint(result, offset, buf_count << 1)             # <<<<<<<<<<<<<<
@@ -2367,7 +2552,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
           __pyx_v_offset = __pyx_f_6hisser_4pack_encode_varint(__pyx_v_result, __pyx_v_offset, (__pyx_v_buf_count << 1));
 
-          /* "hisser/pack.pyx":103
+          /* "hisser/pack.pyx":118
  *                     # print('encode', 0, buf_count, offset)
  *                     offset = encode_varint(result, offset, buf_count << 1)
  *                     memcpy(result + offset, <char *>buf, buf_count * 8)             # <<<<<<<<<<<<<<
@@ -2376,7 +2561,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
           (void)(memcpy((__pyx_v_result + __pyx_v_offset), ((char *)__pyx_v_buf), (__pyx_v_buf_count * 8)));
 
-          /* "hisser/pack.pyx":104
+          /* "hisser/pack.pyx":119
  *                     offset = encode_varint(result, offset, buf_count << 1)
  *                     memcpy(result + offset, <char *>buf, buf_count * 8)
  *                     offset += 8 * buf_count             # <<<<<<<<<<<<<<
@@ -2385,7 +2570,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
           __pyx_v_offset = (__pyx_v_offset + (8 * __pyx_v_buf_count));
 
-          /* "hisser/pack.pyx":105
+          /* "hisser/pack.pyx":120
  *                     memcpy(result + offset, <char *>buf, buf_count * 8)
  *                     offset += 8 * buf_count
  *                     buf_count = 0             # <<<<<<<<<<<<<<
@@ -2394,7 +2579,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
           __pyx_v_buf_count = 0;
 
-          /* "hisser/pack.pyx":100
+          /* "hisser/pack.pyx":115
  *         else:
  *             if rcount > 1:
  *                 if buf_count:             # <<<<<<<<<<<<<<
@@ -2403,7 +2588,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         }
 
-        /* "hisser/pack.pyx":107
+        /* "hisser/pack.pyx":122
  *                     buf_count = 0
  *                 # print('encode', 1, rcount, prev, offset)
  *                 offset = encode_varint(result, offset, (rcount << 1) + 1)             # <<<<<<<<<<<<<<
@@ -2412,7 +2597,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_offset = __pyx_f_6hisser_4pack_encode_varint(__pyx_v_result, __pyx_v_offset, ((__pyx_v_rcount << 1) + 1));
 
-        /* "hisser/pack.pyx":108
+        /* "hisser/pack.pyx":123
  *                 # print('encode', 1, rcount, prev, offset)
  *                 offset = encode_varint(result, offset, (rcount << 1) + 1)
  *                 (<unsigned long long *>(result + offset))[0] = prev             # <<<<<<<<<<<<<<
@@ -2421,7 +2606,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         (((unsigned PY_LONG_LONG *)(__pyx_v_result + __pyx_v_offset))[0]) = __pyx_v_prev;
 
-        /* "hisser/pack.pyx":109
+        /* "hisser/pack.pyx":124
  *                 offset = encode_varint(result, offset, (rcount << 1) + 1)
  *                 (<unsigned long long *>(result + offset))[0] = prev
  *                 offset += 8             # <<<<<<<<<<<<<<
@@ -2430,7 +2615,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_offset = (__pyx_v_offset + 8);
 
-        /* "hisser/pack.pyx":110
+        /* "hisser/pack.pyx":125
  *                 (<unsigned long long *>(result + offset))[0] = prev
  *                 offset += 8
  *                 prev = val             # <<<<<<<<<<<<<<
@@ -2439,7 +2624,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_prev = __pyx_v_val;
 
-        /* "hisser/pack.pyx":111
+        /* "hisser/pack.pyx":126
  *                 offset += 8
  *                 prev = val
  *                 rcount = 1             # <<<<<<<<<<<<<<
@@ -2448,7 +2633,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_rcount = 1;
 
-        /* "hisser/pack.pyx":99
+        /* "hisser/pack.pyx":114
  *             rcount += 1
  *         else:
  *             if rcount > 1:             # <<<<<<<<<<<<<<
@@ -2458,7 +2643,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
         goto __pyx_L7;
       }
 
-      /* "hisser/pack.pyx":113
+      /* "hisser/pack.pyx":128
  *                 rcount = 1
  *             else:
  *                 buf[buf_count] = prev             # <<<<<<<<<<<<<<
@@ -2468,7 +2653,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
       /*else*/ {
         (__pyx_v_buf[__pyx_v_buf_count]) = __pyx_v_prev;
 
-        /* "hisser/pack.pyx":114
+        /* "hisser/pack.pyx":129
  *             else:
  *                 buf[buf_count] = prev
  *                 buf_count += 1             # <<<<<<<<<<<<<<
@@ -2477,7 +2662,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_buf_count = (__pyx_v_buf_count + 1);
 
-        /* "hisser/pack.pyx":115
+        /* "hisser/pack.pyx":130
  *                 buf[buf_count] = prev
  *                 buf_count += 1
  *                 prev = val             # <<<<<<<<<<<<<<
@@ -2486,7 +2671,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
         __pyx_v_prev = __pyx_v_val;
 
-        /* "hisser/pack.pyx":116
+        /* "hisser/pack.pyx":131
  *                 buf_count += 1
  *                 prev = val
  *                 rcount = 1             # <<<<<<<<<<<<<<
@@ -2501,7 +2686,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     __pyx_L3_continue:;
   }
 
-  /* "hisser/pack.pyx":119
+  /* "hisser/pack.pyx":134
  * 
  *     # print('final', buf_count, rcount, prev)
  *     if buf_count:             # <<<<<<<<<<<<<<
@@ -2511,7 +2696,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
   __pyx_t_4 = (__pyx_v_buf_count != 0);
   if (__pyx_t_4) {
 
-    /* "hisser/pack.pyx":120
+    /* "hisser/pack.pyx":135
  *     # print('final', buf_count, rcount, prev)
  *     if buf_count:
  *         if rcount == 1:             # <<<<<<<<<<<<<<
@@ -2521,7 +2706,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     __pyx_t_4 = ((__pyx_v_rcount == 1) != 0);
     if (__pyx_t_4) {
 
-      /* "hisser/pack.pyx":122
+      /* "hisser/pack.pyx":137
  *         if rcount == 1:
  *             # print('encode', 0, buf_count + 1, offset)
  *             offset = encode_varint(result, offset, (buf_count + 1) << 1)             # <<<<<<<<<<<<<<
@@ -2530,7 +2715,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_offset = __pyx_f_6hisser_4pack_encode_varint(__pyx_v_result, __pyx_v_offset, ((__pyx_v_buf_count + 1) << 1));
 
-      /* "hisser/pack.pyx":123
+      /* "hisser/pack.pyx":138
  *             # print('encode', 0, buf_count + 1, offset)
  *             offset = encode_varint(result, offset, (buf_count + 1) << 1)
  *             memcpy(result + offset, <char *>buf, buf_count * 8)             # <<<<<<<<<<<<<<
@@ -2539,7 +2724,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       (void)(memcpy((__pyx_v_result + __pyx_v_offset), ((char *)__pyx_v_buf), (__pyx_v_buf_count * 8)));
 
-      /* "hisser/pack.pyx":124
+      /* "hisser/pack.pyx":139
  *             offset = encode_varint(result, offset, (buf_count + 1) << 1)
  *             memcpy(result + offset, <char *>buf, buf_count * 8)
  *             offset += 8 * buf_count             # <<<<<<<<<<<<<<
@@ -2548,7 +2733,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_offset = (__pyx_v_offset + (8 * __pyx_v_buf_count));
 
-      /* "hisser/pack.pyx":125
+      /* "hisser/pack.pyx":140
  *             memcpy(result + offset, <char *>buf, buf_count * 8)
  *             offset += 8 * buf_count
  *             (<unsigned long long *>(result + offset))[0] = prev             # <<<<<<<<<<<<<<
@@ -2557,7 +2742,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       (((unsigned PY_LONG_LONG *)(__pyx_v_result + __pyx_v_offset))[0]) = __pyx_v_prev;
 
-      /* "hisser/pack.pyx":126
+      /* "hisser/pack.pyx":141
  *             offset += 8 * buf_count
  *             (<unsigned long long *>(result + offset))[0] = prev
  *             offset += 8             # <<<<<<<<<<<<<<
@@ -2566,7 +2751,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_offset = (__pyx_v_offset + 8);
 
-      /* "hisser/pack.pyx":127
+      /* "hisser/pack.pyx":142
  *             (<unsigned long long *>(result + offset))[0] = prev
  *             offset += 8
  *             rcount = 0             # <<<<<<<<<<<<<<
@@ -2575,7 +2760,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       __pyx_v_rcount = 0;
 
-      /* "hisser/pack.pyx":120
+      /* "hisser/pack.pyx":135
  *     # print('final', buf_count, rcount, prev)
  *     if buf_count:
  *         if rcount == 1:             # <<<<<<<<<<<<<<
@@ -2585,7 +2770,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
       goto __pyx_L10;
     }
 
-    /* "hisser/pack.pyx":130
+    /* "hisser/pack.pyx":145
  *         else:
  *             # print('encode', 0, buf_count, offset)
  *             offset = encode_varint(result, offset, buf_count << 1)             # <<<<<<<<<<<<<<
@@ -2595,7 +2780,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     /*else*/ {
       __pyx_v_offset = __pyx_f_6hisser_4pack_encode_varint(__pyx_v_result, __pyx_v_offset, (__pyx_v_buf_count << 1));
 
-      /* "hisser/pack.pyx":131
+      /* "hisser/pack.pyx":146
  *             # print('encode', 0, buf_count, offset)
  *             offset = encode_varint(result, offset, buf_count << 1)
  *             memcpy(result + offset, <char *>buf, buf_count * 8)             # <<<<<<<<<<<<<<
@@ -2604,7 +2789,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
       (void)(memcpy((__pyx_v_result + __pyx_v_offset), ((char *)__pyx_v_buf), (__pyx_v_buf_count * 8)));
 
-      /* "hisser/pack.pyx":132
+      /* "hisser/pack.pyx":147
  *             offset = encode_varint(result, offset, buf_count << 1)
  *             memcpy(result + offset, <char *>buf, buf_count * 8)
  *             offset += 8 * buf_count             # <<<<<<<<<<<<<<
@@ -2615,7 +2800,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
     }
     __pyx_L10:;
 
-    /* "hisser/pack.pyx":119
+    /* "hisser/pack.pyx":134
  * 
  *     # print('final', buf_count, rcount, prev)
  *     if buf_count:             # <<<<<<<<<<<<<<
@@ -2624,7 +2809,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   }
 
-  /* "hisser/pack.pyx":134
+  /* "hisser/pack.pyx":149
  *             offset += 8 * buf_count
  * 
  *     if rcount:             # <<<<<<<<<<<<<<
@@ -2634,7 +2819,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
   __pyx_t_4 = (__pyx_v_rcount != 0);
   if (__pyx_t_4) {
 
-    /* "hisser/pack.pyx":136
+    /* "hisser/pack.pyx":151
  *     if rcount:
  *         # print('encode', 1, rcount, prev, offset)
  *         offset = encode_varint(result, offset, (rcount << 1) + 1)             # <<<<<<<<<<<<<<
@@ -2643,7 +2828,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
     __pyx_v_offset = __pyx_f_6hisser_4pack_encode_varint(__pyx_v_result, __pyx_v_offset, ((__pyx_v_rcount << 1) + 1));
 
-    /* "hisser/pack.pyx":137
+    /* "hisser/pack.pyx":152
  *         # print('encode', 1, rcount, prev, offset)
  *         offset = encode_varint(result, offset, (rcount << 1) + 1)
  *         (<unsigned long long *>(result + offset))[0] = prev             # <<<<<<<<<<<<<<
@@ -2652,7 +2837,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
     (((unsigned PY_LONG_LONG *)(__pyx_v_result + __pyx_v_offset))[0]) = __pyx_v_prev;
 
-    /* "hisser/pack.pyx":138
+    /* "hisser/pack.pyx":153
  *         offset = encode_varint(result, offset, (rcount << 1) + 1)
  *         (<unsigned long long *>(result + offset))[0] = prev
  *         offset += 8             # <<<<<<<<<<<<<<
@@ -2661,7 +2846,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
     __pyx_v_offset = (__pyx_v_offset + 8);
 
-    /* "hisser/pack.pyx":134
+    /* "hisser/pack.pyx":149
  *             offset += 8 * buf_count
  * 
  *     if rcount:             # <<<<<<<<<<<<<<
@@ -2670,7 +2855,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
  */
   }
 
-  /* "hisser/pack.pyx":140
+  /* "hisser/pack.pyx":155
  *         offset += 8
  * 
  *     return offset             # <<<<<<<<<<<<<<
@@ -2678,7 +2863,7 @@ static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *__pyx_v_data,
   __pyx_r = __pyx_v_offset;
   goto __pyx_L0;
 
-  /* "hisser/pack.pyx":80
+  /* "hisser/pack.pyx":95
  * @cython.wraparound(False)
  * @cython.cdivision(True)
  * cdef size_t _encode(unsigned long long *data, size_t count,             # <<<<<<<<<<<<<<
@@ -3328,8 +3513,9 @@ static CYTHON_INLINE void __pyx_f_7cpython_5array_zero(arrayobject *__pyx_v_self
 }
 
 static PyMethodDef __pyx_methods[] = {
-  {"unpack", (PyCFunction)__pyx_pw_6hisser_4pack_1unpack, METH_VARARGS|METH_KEYWORDS, 0},
-  {"pack", (PyCFunction)__pyx_pw_6hisser_4pack_3pack, METH_O, 0},
+  {"array_is_empty", (PyCFunction)__pyx_pw_6hisser_4pack_1array_is_empty, METH_O, 0},
+  {"unpack", (PyCFunction)__pyx_pw_6hisser_4pack_3unpack, METH_VARARGS|METH_KEYWORDS, 0},
+  {"pack", (PyCFunction)__pyx_pw_6hisser_4pack_5pack, METH_O, 0},
   {0, 0, 0, 0}
 };
 
@@ -3381,7 +3567,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 40, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 17, __pyx_L1_error)
   __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(1, 109, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
@@ -3753,6 +3939,27 @@ static PyObject *__Pyx_GetBuiltinName(PyObject *name) {
     return result;
 }
 
+/* ArgTypeTest */
+static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact)
+{
+    if (unlikely(!type)) {
+        PyErr_SetString(PyExc_SystemError, "Missing type object");
+        return 0;
+    }
+    else if (exact) {
+        #if PY_MAJOR_VERSION == 2
+        if ((type == &PyBaseString_Type) && likely(__Pyx_PyBaseString_CheckExact(obj))) return 1;
+        #endif
+    }
+    else {
+        if (likely(__Pyx_TypeCheck(obj, type))) return 1;
+    }
+    PyErr_Format(PyExc_TypeError,
+        "Argument '%.200s' has incorrect type (expected %.200s, got %.200s)",
+        name, type->tp_name, Py_TYPE(obj)->tp_name);
+    return 0;
+}
+
 /* PyCFunctionFastCall */
 #if CYTHON_FAST_PYCCALL
 static CYTHON_INLINE PyObject * __Pyx_PyCFunction_FastCall(PyObject *func_obj, PyObject **args, Py_ssize_t nargs) {
@@ -4118,27 +4325,6 @@ bad:
     return -1;
 }
 
-/* ArgTypeTest */
-static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact)
-{
-    if (unlikely(!type)) {
-        PyErr_SetString(PyExc_SystemError, "Missing type object");
-        return 0;
-    }
-    else if (exact) {
-        #if PY_MAJOR_VERSION == 2
-        if ((type == &PyBaseString_Type) && likely(__Pyx_PyBaseString_CheckExact(obj))) return 1;
-        #endif
-    }
-    else {
-        if (likely(__Pyx_TypeCheck(obj, type))) return 1;
-    }
-    PyErr_Format(PyExc_TypeError,
-        "Argument '%.200s' has incorrect type (expected %.200s, got %.200s)",
-        name, type->tp_name, Py_TYPE(obj)->tp_name);
-    return 0;
-}
-
 /* Import */
 static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level) {
     PyObject *empty_list = 0;
@@ -4434,6 +4620,59 @@ bad:
 }
 
 /* CIntToPy */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value) {
+    const int neg_one = (int) -1, const_zero = (int) 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(int) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(int) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int) <= sizeof(unsigned PY_LONG_LONG)) {
+            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
+#endif
+        }
+    } else {
+        if (sizeof(int) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+#ifdef HAVE_LONG_LONG
+        } else if (sizeof(int) <= sizeof(PY_LONG_LONG)) {
+            return PyLong_FromLongLong((PY_LONG_LONG) value);
+#endif
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(int),
+                                     little, !is_unsigned);
+    }
+}
+
+/* CIntFromPyVerify */
+#define __PYX_VERIFY_RETURN_INT(target_type, func_type, func_value)\
+    __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, 0)
+#define __PYX_VERIFY_RETURN_INT_EXC(target_type, func_type, func_value)\
+    __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, 1)
+#define __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, exc)\
+    {\
+        func_type value = func_value;\
+        if (sizeof(target_type) < sizeof(func_type)) {\
+            if (unlikely(value != (func_type) (target_type) value)) {\
+                func_type zero = 0;\
+                if (exc && unlikely(value == (func_type)-1 && PyErr_Occurred()))\
+                    return (target_type) -1;\
+                if (is_unsigned && unlikely(value < zero))\
+                    goto raise_neg_overflow;\
+                else\
+                    goto raise_overflow;\
+            }\
+        }\
+        return (target_type) value;\
+    }
+
+/* CIntToPy */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_int(unsigned int value) {
     const unsigned int neg_one = (unsigned int) -1, const_zero = (unsigned int) 0;
     const int is_unsigned = neg_one > const_zero;
@@ -4462,217 +4701,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_int(unsigned int value)
         return _PyLong_FromByteArray(bytes, sizeof(unsigned int),
                                      little, !is_unsigned);
     }
-}
-
-/* CIntFromPyVerify */
-#define __PYX_VERIFY_RETURN_INT(target_type, func_type, func_value)\
-    __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, 0)
-#define __PYX_VERIFY_RETURN_INT_EXC(target_type, func_type, func_value)\
-    __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, 1)
-#define __PYX__VERIFY_RETURN_INT(target_type, func_type, func_value, exc)\
-    {\
-        func_type value = func_value;\
-        if (sizeof(target_type) < sizeof(func_type)) {\
-            if (unlikely(value != (func_type) (target_type) value)) {\
-                func_type zero = 0;\
-                if (exc && unlikely(value == (func_type)-1 && PyErr_Occurred()))\
-                    return (target_type) -1;\
-                if (is_unsigned && unlikely(value < zero))\
-                    goto raise_neg_overflow;\
-                else\
-                    goto raise_overflow;\
-            }\
-        }\
-        return (target_type) value;\
-    }
-
-/* CIntFromPy */
-static CYTHON_INLINE unsigned int __Pyx_PyInt_As_unsigned_int(PyObject *x) {
-    const unsigned int neg_one = (unsigned int) -1, const_zero = (unsigned int) 0;
-    const int is_unsigned = neg_one > const_zero;
-#if PY_MAJOR_VERSION < 3
-    if (likely(PyInt_Check(x))) {
-        if (sizeof(unsigned int) < sizeof(long)) {
-            __PYX_VERIFY_RETURN_INT(unsigned int, long, PyInt_AS_LONG(x))
-        } else {
-            long val = PyInt_AS_LONG(x);
-            if (is_unsigned && unlikely(val < 0)) {
-                goto raise_neg_overflow;
-            }
-            return (unsigned int) val;
-        }
-    } else
-#endif
-    if (likely(PyLong_Check(x))) {
-        if (is_unsigned) {
-#if CYTHON_USE_PYLONG_INTERNALS
-            const digit* digits = ((PyLongObject*)x)->ob_digit;
-            switch (Py_SIZE(x)) {
-                case  0: return (unsigned int) 0;
-                case  1: __PYX_VERIFY_RETURN_INT(unsigned int, digit, digits[0])
-                case 2:
-                    if (8 * sizeof(unsigned int) > 1 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) >= 2 * PyLong_SHIFT) {
-                            return (unsigned int) (((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
-                        }
-                    }
-                    break;
-                case 3:
-                    if (8 * sizeof(unsigned int) > 2 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) >= 3 * PyLong_SHIFT) {
-                            return (unsigned int) (((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
-                        }
-                    }
-                    break;
-                case 4:
-                    if (8 * sizeof(unsigned int) > 3 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) >= 4 * PyLong_SHIFT) {
-                            return (unsigned int) (((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
-                        }
-                    }
-                    break;
-            }
-#endif
-#if CYTHON_COMPILING_IN_CPYTHON
-            if (unlikely(Py_SIZE(x) < 0)) {
-                goto raise_neg_overflow;
-            }
-#else
-            {
-                int result = PyObject_RichCompareBool(x, Py_False, Py_LT);
-                if (unlikely(result < 0))
-                    return (unsigned int) -1;
-                if (unlikely(result == 1))
-                    goto raise_neg_overflow;
-            }
-#endif
-            if (sizeof(unsigned int) <= sizeof(unsigned long)) {
-                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, unsigned long, PyLong_AsUnsignedLong(x))
-#ifdef HAVE_LONG_LONG
-            } else if (sizeof(unsigned int) <= sizeof(unsigned PY_LONG_LONG)) {
-                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, unsigned PY_LONG_LONG, PyLong_AsUnsignedLongLong(x))
-#endif
-            }
-        } else {
-#if CYTHON_USE_PYLONG_INTERNALS
-            const digit* digits = ((PyLongObject*)x)->ob_digit;
-            switch (Py_SIZE(x)) {
-                case  0: return (unsigned int) 0;
-                case -1: __PYX_VERIFY_RETURN_INT(unsigned int, sdigit, (sdigit) (-(sdigit)digits[0]))
-                case  1: __PYX_VERIFY_RETURN_INT(unsigned int,  digit, +digits[0])
-                case -2:
-                    if (8 * sizeof(unsigned int) - 1 > 1 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
-                            return (unsigned int) (((unsigned int)-1)*(((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-                case 2:
-                    if (8 * sizeof(unsigned int) > 1 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
-                            return (unsigned int) ((((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-                case -3:
-                    if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
-                            return (unsigned int) (((unsigned int)-1)*(((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-                case 3:
-                    if (8 * sizeof(unsigned int) > 2 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
-                            return (unsigned int) ((((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-                case -4:
-                    if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 4 * PyLong_SHIFT) {
-                            return (unsigned int) (((unsigned int)-1)*(((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-                case 4:
-                    if (8 * sizeof(unsigned int) > 3 * PyLong_SHIFT) {
-                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
-                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
-                        } else if (8 * sizeof(unsigned int) - 1 > 4 * PyLong_SHIFT) {
-                            return (unsigned int) ((((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
-                        }
-                    }
-                    break;
-            }
-#endif
-            if (sizeof(unsigned int) <= sizeof(long)) {
-                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, long, PyLong_AsLong(x))
-#ifdef HAVE_LONG_LONG
-            } else if (sizeof(unsigned int) <= sizeof(PY_LONG_LONG)) {
-                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, PY_LONG_LONG, PyLong_AsLongLong(x))
-#endif
-            }
-        }
-        {
-#if CYTHON_COMPILING_IN_PYPY && !defined(_PyLong_AsByteArray)
-            PyErr_SetString(PyExc_RuntimeError,
-                            "_PyLong_AsByteArray() not available in PyPy, cannot convert large numbers");
-#else
-            unsigned int val;
-            PyObject *v = __Pyx_PyNumber_IntOrLong(x);
- #if PY_MAJOR_VERSION < 3
-            if (likely(v) && !PyLong_Check(v)) {
-                PyObject *tmp = v;
-                v = PyNumber_Long(tmp);
-                Py_DECREF(tmp);
-            }
- #endif
-            if (likely(v)) {
-                int one = 1; int is_little = (int)*(unsigned char *)&one;
-                unsigned char *bytes = (unsigned char *)&val;
-                int ret = _PyLong_AsByteArray((PyLongObject *)v,
-                                              bytes, sizeof(val),
-                                              is_little, !is_unsigned);
-                Py_DECREF(v);
-                if (likely(!ret))
-                    return val;
-            }
-#endif
-            return (unsigned int) -1;
-        }
-    } else {
-        unsigned int val;
-        PyObject *tmp = __Pyx_PyNumber_IntOrLong(x);
-        if (!tmp) return (unsigned int) -1;
-        val = __Pyx_PyInt_As_unsigned_int(tmp);
-        Py_DECREF(tmp);
-        return val;
-    }
-raise_overflow:
-    PyErr_SetString(PyExc_OverflowError,
-        "value too large to convert to unsigned int");
-    return (unsigned int) -1;
-raise_neg_overflow:
-    PyErr_SetString(PyExc_OverflowError,
-        "can't convert negative value to unsigned int");
-    return (unsigned int) -1;
 }
 
 /* CIntFromPy */
@@ -4862,6 +4890,195 @@ raise_neg_overflow:
     PyErr_SetString(PyExc_OverflowError,
         "can't convert negative value to size_t");
     return (size_t) -1;
+}
+
+/* CIntFromPy */
+static CYTHON_INLINE unsigned int __Pyx_PyInt_As_unsigned_int(PyObject *x) {
+    const unsigned int neg_one = (unsigned int) -1, const_zero = (unsigned int) 0;
+    const int is_unsigned = neg_one > const_zero;
+#if PY_MAJOR_VERSION < 3
+    if (likely(PyInt_Check(x))) {
+        if (sizeof(unsigned int) < sizeof(long)) {
+            __PYX_VERIFY_RETURN_INT(unsigned int, long, PyInt_AS_LONG(x))
+        } else {
+            long val = PyInt_AS_LONG(x);
+            if (is_unsigned && unlikely(val < 0)) {
+                goto raise_neg_overflow;
+            }
+            return (unsigned int) val;
+        }
+    } else
+#endif
+    if (likely(PyLong_Check(x))) {
+        if (is_unsigned) {
+#if CYTHON_USE_PYLONG_INTERNALS
+            const digit* digits = ((PyLongObject*)x)->ob_digit;
+            switch (Py_SIZE(x)) {
+                case  0: return (unsigned int) 0;
+                case  1: __PYX_VERIFY_RETURN_INT(unsigned int, digit, digits[0])
+                case 2:
+                    if (8 * sizeof(unsigned int) > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) >= 2 * PyLong_SHIFT) {
+                            return (unsigned int) (((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
+                        }
+                    }
+                    break;
+                case 3:
+                    if (8 * sizeof(unsigned int) > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) >= 3 * PyLong_SHIFT) {
+                            return (unsigned int) (((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
+                        }
+                    }
+                    break;
+                case 4:
+                    if (8 * sizeof(unsigned int) > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) >= 4 * PyLong_SHIFT) {
+                            return (unsigned int) (((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0]));
+                        }
+                    }
+                    break;
+            }
+#endif
+#if CYTHON_COMPILING_IN_CPYTHON
+            if (unlikely(Py_SIZE(x) < 0)) {
+                goto raise_neg_overflow;
+            }
+#else
+            {
+                int result = PyObject_RichCompareBool(x, Py_False, Py_LT);
+                if (unlikely(result < 0))
+                    return (unsigned int) -1;
+                if (unlikely(result == 1))
+                    goto raise_neg_overflow;
+            }
+#endif
+            if (sizeof(unsigned int) <= sizeof(unsigned long)) {
+                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, unsigned long, PyLong_AsUnsignedLong(x))
+#ifdef HAVE_LONG_LONG
+            } else if (sizeof(unsigned int) <= sizeof(unsigned PY_LONG_LONG)) {
+                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, unsigned PY_LONG_LONG, PyLong_AsUnsignedLongLong(x))
+#endif
+            }
+        } else {
+#if CYTHON_USE_PYLONG_INTERNALS
+            const digit* digits = ((PyLongObject*)x)->ob_digit;
+            switch (Py_SIZE(x)) {
+                case  0: return (unsigned int) 0;
+                case -1: __PYX_VERIFY_RETURN_INT(unsigned int, sdigit, (sdigit) (-(sdigit)digits[0]))
+                case  1: __PYX_VERIFY_RETURN_INT(unsigned int,  digit, +digits[0])
+                case -2:
+                    if (8 * sizeof(unsigned int) - 1 > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
+                            return (unsigned int) (((unsigned int)-1)*(((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+                case 2:
+                    if (8 * sizeof(unsigned int) > 1 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 2 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
+                            return (unsigned int) ((((((unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+                case -3:
+                    if (8 * sizeof(unsigned int) - 1 > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
+                            return (unsigned int) (((unsigned int)-1)*(((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+                case 3:
+                    if (8 * sizeof(unsigned int) > 2 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 3 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
+                            return (unsigned int) ((((((((unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+                case -4:
+                    if (8 * sizeof(unsigned int) - 1 > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, long, -(long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 4 * PyLong_SHIFT) {
+                            return (unsigned int) (((unsigned int)-1)*(((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+                case 4:
+                    if (8 * sizeof(unsigned int) > 3 * PyLong_SHIFT) {
+                        if (8 * sizeof(unsigned long) > 4 * PyLong_SHIFT) {
+                            __PYX_VERIFY_RETURN_INT(unsigned int, unsigned long, (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0])))
+                        } else if (8 * sizeof(unsigned int) - 1 > 4 * PyLong_SHIFT) {
+                            return (unsigned int) ((((((((((unsigned int)digits[3]) << PyLong_SHIFT) | (unsigned int)digits[2]) << PyLong_SHIFT) | (unsigned int)digits[1]) << PyLong_SHIFT) | (unsigned int)digits[0])));
+                        }
+                    }
+                    break;
+            }
+#endif
+            if (sizeof(unsigned int) <= sizeof(long)) {
+                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, long, PyLong_AsLong(x))
+#ifdef HAVE_LONG_LONG
+            } else if (sizeof(unsigned int) <= sizeof(PY_LONG_LONG)) {
+                __PYX_VERIFY_RETURN_INT_EXC(unsigned int, PY_LONG_LONG, PyLong_AsLongLong(x))
+#endif
+            }
+        }
+        {
+#if CYTHON_COMPILING_IN_PYPY && !defined(_PyLong_AsByteArray)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "_PyLong_AsByteArray() not available in PyPy, cannot convert large numbers");
+#else
+            unsigned int val;
+            PyObject *v = __Pyx_PyNumber_IntOrLong(x);
+ #if PY_MAJOR_VERSION < 3
+            if (likely(v) && !PyLong_Check(v)) {
+                PyObject *tmp = v;
+                v = PyNumber_Long(tmp);
+                Py_DECREF(tmp);
+            }
+ #endif
+            if (likely(v)) {
+                int one = 1; int is_little = (int)*(unsigned char *)&one;
+                unsigned char *bytes = (unsigned char *)&val;
+                int ret = _PyLong_AsByteArray((PyLongObject *)v,
+                                              bytes, sizeof(val),
+                                              is_little, !is_unsigned);
+                Py_DECREF(v);
+                if (likely(!ret))
+                    return val;
+            }
+#endif
+            return (unsigned int) -1;
+        }
+    } else {
+        unsigned int val;
+        PyObject *tmp = __Pyx_PyNumber_IntOrLong(x);
+        if (!tmp) return (unsigned int) -1;
+        val = __Pyx_PyInt_As_unsigned_int(tmp);
+        Py_DECREF(tmp);
+        return val;
+    }
+raise_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "value too large to convert to unsigned int");
+    return (unsigned int) -1;
+raise_neg_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "can't convert negative value to unsigned int");
+    return (unsigned int) -1;
 }
 
 /* CIntToPy */
