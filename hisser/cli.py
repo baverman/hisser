@@ -60,7 +60,7 @@ def cmd_cleanup(cfg):
 @click.argument('block')
 def cmd_dump(block):
     for k, v in db.dump(block):
-        print(k.decode(), len(v), v, sep='\t')
+        print(k, len(v), v, sep='\t')
 
 
 @cli.command('dump-index', help='dump content of metric index')
