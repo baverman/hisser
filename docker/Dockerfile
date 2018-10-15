@@ -1,6 +1,6 @@
 # Base image with os requirements
 # ===============================
-FROM alpine:3.7 as base
+FROM alpine:3.8 as base
 
 ENV LANG=C.UTF-8
 RUN apk update \
