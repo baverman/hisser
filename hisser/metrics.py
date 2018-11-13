@@ -6,7 +6,7 @@ from .utils import MB, txn_cursor, make_key
 
 
 class MetricIndex:
-    def __init__(self, path, map_size=500*MB):
+    def __init__(self, path, map_size=1000*MB):
         self.env = lmdb.open(path, map_size, subdir=False, max_dbs=6)
         self.tree_db = self.env.open_db(b'tree', dupsort=True)
         self.tag_db = self.env.open_db(b'tag', dupsort=True)
