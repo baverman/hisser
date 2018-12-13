@@ -80,6 +80,16 @@ def cmd_dump_index(itype, index):
             print(k.decode(), v, sep='\t')
 
 
+@cli.command('dump-hdbm', help='dump contents of .hdbm file')
+@click.argument('block-metrics')
+@config_aware
+def cmd_dump_hdmp(cfg, block_metrics):
+    rmethods = {v: k for k, v in agg.METHODS.items()}
+    for line in db.read_block_names(block_metrics):
+        method = cfg.agg_rules.get_method(line, use_bin=True)
+        print(line.decode(), utils.make_key(line), rmethods[method], sep='\t')
+
+
 @cli.command('backup', help='backup db file')
 @click.argument('dbfile')
 @click.argument('out')

@@ -300,13 +300,21 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
             s_slices.append(slice(idx, idx+b.size))
             b_slices.append(slice(b.idx, b.idx+b.size))
 
+        agg_funcs = {}
+        agg_default = agg_rules.default
+        for b in blocks:
+            names = read_block_names(b.path)
+            agg_funcs.update(agg_rules.get_methods(names, use_bin=True)[0])
+
+        agg_funcs = {make_key(k): v for k, v in agg_funcs.items()}
+
         def gen():
             for k, g in stream:
                 row = empty_row[:]
                 for _, bn, values in g:
                     row[s_slices[bn]] = values[b_slices[bn]]
 
-                agg_method = agg_rules.get_method(k, use_bin=True)
+                agg_method = agg_funcs.get(k, agg_default)
                 agg = array.array('d', (agg_method(row[r:r+csize])
                                         for r in range(0, s_size, csize)))
                 yield k, agg

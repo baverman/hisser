@@ -10,3 +10,6 @@
 /build
 /*.egg-info
 *.so
+/*.http
+/*.ini
+/TODO
