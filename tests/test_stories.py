@@ -81,3 +81,6 @@ def test_simple(tmpdir):
 
     cfg.server.time_to_exit = True
     time.sleep(3)
+
+    while cfg.server.check_childs():
+        time.sleep(0.1)

@@ -70,6 +70,8 @@ def run_in_fork(func, *args, **kwargs):
             sys.stderr.flush()
             os._exit(1)
         else:
+            sys.stdout.flush()
+            sys.stderr.flush()
             os._exit(0)
     else:
         return Fork(pid, time())

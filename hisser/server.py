@@ -5,15 +5,13 @@ import socket
 import signal
 import fcntl
 import logging
-from selectors import DefaultSelector, EVENT_READ, EVENT_WRITE
+import asyncio
+import threading
+from selectors import DefaultSelector, EVENT_READ
 
 from .utils import run_in_fork, wait_childs, mloads, mdumps
 
 log = logging.getLogger(__name__)
-
-
-def rpc_fetch(srv, keys):
-    return srv.buf.get_data(keys)
 
 
 class Server:
@@ -52,37 +50,6 @@ class Server:
         (data, _addr) = conn.recvfrom(4096)
         if data:
             self.process(data, end=True)
-
-    def link_write(self, conn, cdata):
-        buf = cdata['buf']
-        count = conn.send(buf)
-        cdata['buf'] = buf = buf[count:]
-
-        if not buf:
-            self.sel.unregister(conn)
-            conn.close()
-
-    def link_read(self, conn, cdata):
-        data = conn.recv(4096)
-        buf = cdata.get('buf', b'')
-        if data:
-            cdata['buf'] = buf + data
-            return
-
-        if not buf:  # pragma: nocover
-            self.sel.unregister(conn)
-            conn.close()
-            return
-
-        try:
-            req = mloads(buf)
-            method = req.pop('method')
-            resp = mdumps(globals()['rpc_{}'.format(method)](self, **req))
-        except Exception as e:
-            resp = mdumps({'error': str(e)})
-
-        self.sel.unregister(conn)
-        self.sel.register(conn, EVENT_WRITE, (self.link_write, {'buf': resp}))
 
     def process(self, data, end=False):
         lines = data.splitlines(True)
@@ -145,16 +112,14 @@ class Server:
             sock_udp.setblocking(False)
             sel.register(sock_udp, EVENT_READ, (self.carbon_read_udp, None))
 
-        if self.link_host_port:
-            link_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            link_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            link_sock.bind(self.link_host_port)
-            link_sock.listen(self.backlog)
-            link_sock.setblocking(False)
-            sel.register(link_sock, EVENT_READ, (self.accept, {'handler': self.link_read}))
-
         if signals:  # pragma: nocover
             self.setup_signals(sel)
+
+        if self.link_host_port:
+            self.link_server = RpcServer(self.buf, *self.link_host_port)
+            self.link_thread = threading.Thread(
+                target=self.link_server.start, daemon=True)
+            self.link_thread.start()
 
     def check_childs(self):
         if self.flush_pids or self.merge_pid:
@@ -206,6 +171,38 @@ class Server:
         data, _new_names = self.buf.tick(force=True)
         if data:
             self.storage.new_block(*data)
+
+
+class RpcServer:
+    def __init__(self, buf, host, port):
+        self.buf = buf
+        self.host = host
+        self.port = port
+
+    async def handler(self, reader, writer):
+        data = await reader.read()
+        if not data:  # pragma: no cover
+            return
+
+        try:
+            req = mloads(data)
+            method = req.pop('method')
+            resp = mdumps(getattr(self, 'rpc_{}'.format(method))(**req))
+        except Exception as e:
+            resp = mdumps({'error': str(e)})
+
+        writer.write(resp)
+        await writer.drain()
+        writer.close()
+
+    def rpc_fetch(self, keys):
+        return self.buf.get_data(keys)
+
+    def start(self):
+        loop = asyncio.new_event_loop()
+        loop.create_task(asyncio.start_server(
+            self.handler, self.host, self.port, loop=loop))
+        loop.run_forever()
 
 
 class RpcClient:
