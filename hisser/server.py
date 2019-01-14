@@ -168,8 +168,8 @@ class Server:
         while self.check_childs():  # pragma: nocover
             time.sleep(1)
 
-        data, _new_names = self.buf.tick(force=True)
-        if data:
+        data, _new_names = self.buf.tick(force=True)  # pragma: nocover
+        if data:  # pragma: nocover
             self.storage.new_block(*data)
 
 

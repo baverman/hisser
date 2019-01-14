@@ -2,42 +2,11 @@ from hisser import metrics as api
 from hisser.utils import make_key
 
 
-def test_make_tree():
-    result = list(api.make_tree([b'boo', b'foo']))
-    assert result == [(b'.', b'boo'), (b'.', b'foo')]
-
-    result = list(api.make_tree([b'boo.foo.bar']))
-    assert result == [(b'.', b'boo'),
-                      (b'boo', b'foo'),
-                      (b'boo.foo', b'bar')]
-
-    result = list(api.make_tree([b'boo.bar', b'boo.foo']))
-    assert result == [(b'.', b'boo'),
-                      (b'boo', b'bar'),
-                      (b'boo', b'foo')]
-
-    result = list(api.make_tree([b'app1.inst1.boo', b'app1.inst1.foo', b'app1.inst2.foo']))
-    assert result == [(b'.', b'app1'),
-                      (b'app1', b'inst1'),
-                      (b'app1.inst1', b'boo'),
-                      (b'app1.inst1', b'foo'),
-                      (b'app1', b'inst2'),
-                      (b'app1.inst2', b'foo')]
-
-
-def test_query_parts():
-    assert api.query_parts('localhost.boo.*.boo.foo') == (b'localhost.boo', [b'*', b'boo', b'foo'])
-    assert api.query_parts('[abc].boo.foo') == (b'', [b'[abc]', b'boo', b'foo'])
-
-
 def test_simple_find(tmpdir):
     fname = str(tmpdir.join('metrics.db'))
     mi = api.MetricIndex(fname)
 
     mi.add([b'boo', b'foo'])
-
-    result = list(mi.iter_tree())
-    assert result == [(b'.', b'boo'), (b'.', b'foo')]
 
     result = mi.find_metrics_many(['*'])
     assert result == {'*': [b'boo', b'foo']}
@@ -75,23 +44,17 @@ def test_prefix(tmpdir):
 
 def test_tags(tmpdir):
     fname = str(tmpdir.join('metrics.db'))
+    bar = b'bar;dc=prod'
     boo = b'boo;dc=prod'
     foo = b'foo;dc=test;host=alpha'
     mi = api.MetricIndex(fname)
+    mi.add([bar])
     mi.add([boo, foo])
-    mi.add([boo, foo])
+    mi.add([bar, boo, foo])
 
     assert list(mi.iter_tags()) == [
         (b'dc', b'prod'), (b'dc', b'test'), (b'host', b'alpha'),
-        (b'name', b'boo'), (b'name', b'foo')]
-
-    assert sorted(mi.iter_tag_names()) == [
-        (b'boo', boo),
-        (b'dc=prod', boo),
-        (b'dc=test', foo),
-        (b'foo', foo),
-        (b'host=alpha', foo)
-    ]
+        (b'name', b'bar'), (b'name', b'boo'), (b'name', b'foo')]
 
     assert mi.get_tags() == [b'dc', b'host', b'name']
     assert mi.get_tag_values('dc') == [b'prod', b'test']
@@ -100,7 +63,7 @@ def test_tags(tmpdir):
 
     # = op
     result = mi.match_by_tags([('dc', '=', 'prod')])
-    assert set(result) == {boo}
+    assert set(result) == {bar, boo}
 
     result = mi.match_by_tags([('name', '=', 'foo')])
     assert set(result) == {foo}
@@ -114,7 +77,7 @@ def test_tags(tmpdir):
 
     # =~ op
     result = mi.match_by_tags([('dc', '=~', ':prod,test')])
-    assert set(result) == {boo, foo}
+    assert set(result) == {bar, boo, foo}
 
     result = mi.match_by_tags([('dc', '=~', ':stable')])
     assert set(result) == set()
@@ -126,20 +89,20 @@ def test_tags(tmpdir):
     assert set(result) == set()
 
     result = mi.match_by_tags([('dc', '=~', '(prod|test)')])
-    assert set(result) == {boo, foo}
+    assert set(result) == {bar, boo, foo}
 
     # !=~ op
     result = mi.match_by_tags([('dc', '!=~', ':prod,test')])
     assert set(result) == set()
 
     result = mi.match_by_tags([('dc', '!=~', ':stable')])
-    assert set(result) == {boo, foo}
+    assert set(result) == {bar, boo, foo}
 
     result = mi.match_by_tags([('name', '!=~', '!bo*')])
-    assert set(result) == {foo}
+    assert set(result) == {bar, foo}
 
     result = mi.match_by_tags([('name', '!=~', '!oo*')])
-    assert set(result) == {boo, foo}
+    assert set(result) == {bar, boo, foo}
 
     result = mi.match_by_tags([('dc', '!=~', '(prod|test)')])
     assert set(result) == set()

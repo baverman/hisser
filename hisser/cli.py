@@ -64,20 +64,26 @@ def cmd_dump(block):
 
 
 @cli.command('dump-index', help='dump content of metric index')
-@click.option('-t', '--type', 'itype', default='tag-names',
-              type=click.Choice(['tree', 'tags', 'tag-names']))
+@click.option('-t', '--type', 'itype', default='names',
+              type=click.Choice(['names', 'tags']))
 @click.argument('index')
 def cmd_dump_index(itype, index):
     mi = metrics.MetricIndex(index)
-    if itype == 'tree':
-        for k, v in mi.iter_tree():
-            print(k.decode(), v.decode(), sep='\t')
-    elif itype == 'tags':
+    if itype == 'tags':
         for k, v in mi.iter_tags():
             print(k.decode(), v.decode(), sep='\t')
-    elif itype == 'tag-names':
-        for k, v in mi.iter_tag_names():
-            print(k.decode(), v, sep='\t')
+    elif itype == 'names':
+        for v in mi.iter_names():
+            print(v.decode())
+
+
+@cli.command('reindex', help='Reindex metrics')
+@click.argument('index')
+@click.argument('blocks', nargs=-1, required=True)
+def cmd_reindex(index, blocks):
+    mi = metrics.MetricIndex(index)
+    for b in blocks:
+        mi.add(db.read_block_names(b))
 
 
 @cli.command('dump-hdbm', help='dump contents of .hdbm file')

@@ -159,7 +159,9 @@ class Finder(BaseFinder):
 
     @scream
     def auto_complete_tags(self, exprs, tagPrefix=None, limit=None, requestContext=None):
-        result = tags = [r.decode() for r in self.metric_index.get_tags()]
+        result = tags = [r.decode()
+                         for r in self.metric_index.get_tags()
+                         if not r.startswith(b'.')]
         if tagPrefix:
             result = [r for r in result if r.startswith(tagPrefix)]
             if len(result) < 10:

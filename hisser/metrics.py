@@ -1,258 +1,374 @@
 import re
-from fnmatch import filter as fnfilter, translate
+from fnmatch import translate
 
 import lmdb
-from .utils import MB, txn_cursor, make_key
+from .utils import MB, txn_cursor, make_key, cached_property
 
 
 class MetricIndex:
     def __init__(self, path, map_size=3000*MB):
-        self.env = lmdb.open(path, map_size, subdir=False, max_dbs=6)
-        self.env.reader_check()
-        self.tree_db = self.env.open_db(b'tree', dupsort=True)
-        self.tag_db = self.env.open_db(b'tag', dupsort=True)
-        self.tag_name_db = self.env.open_db(b'tag_name')
-        self.tag2idx_db = self.env.open_db(b'tag2idx')
-        self.idx2tag_db = self.env.open_db(b'idx2tag')
-        self.tag_cache = {}
+        self.path = path
+        self.map_size = map_size
 
-    def idx2name(self, idx, ct):
+    @cached_property
+    def env(self):
+        env = lmdb.open(self.path, self.map_size, subdir=False,
+                        max_dbs=7, max_readers=4096)
+        env.reader_check()
+        return env
+
+    @cached_property
+    def tag_values_db(self):
+        return self.env.open_db(b'tag:value', dupsort=True)
+
+    @cached_property
+    def tag_ids_db(self):
+        return self.env.open_db(b'tag=value:tag_id')
+
+    @cached_property
+    def tag_ids_rev_db(self):
+        return self.env.open_db(b'tag_id:tag=value')
+
+    @cached_property
+    def tag_name_db(self):
+        return self.env.open_db(b'tag_id:name_id', dupsort=True)
+
+    @cached_property
+    def name_tags_db(self):
+        return self.env.open_db(b'name_id:tag_ids')
+
+    @cached_property
+    def name_hashes_db(self):
+        return self.env.open_db(b'name_hash:')
+
+    def filter_existing_names(self, names):
+        with txn_cursor(self.env, True, self.name_hashes_db) as cur:
+            result = [it for it in names if cur.get(make_key(it)) is None]
+        return result
+
+    def add(self, names):
+        tagged_names = list(split_names(self.filter_existing_names(names)))
+        if not tagged_names:
+            return
+        last_name_id = self.alloc_id(b'last_name_id', len(tagged_names))
+
+        tags = set()
+        for _, parts in tagged_names:
+            tags.update(parts)
+
+        ids = self.get_tag_ids(tags)
+
+        tag_names = []
+        names = []
+        for _, parts in tagged_names:
+            last_name_id += 1
+            nid = last_name_id.to_bytes(4, 'big')
+            tag_names.extend((ids[r], nid) for r in parts)
+            names.append((nid, b''.join(ids[r] for r in parts)))
+
+        with txn_cursor(self.env, True, self.tag_name_db) as cur:
+            cur.putmulti(tag_names)
+
+        with txn_cursor(self.env, True, self.name_tags_db) as cur:
+            cur.putmulti(names)
+
+        with txn_cursor(self.env, True, self.name_hashes_db) as cur:
+            cur.putmulti((make_key(it[0]), b'') for it in tagged_names)
+
+    def alloc_id(self, name, count=1):
+        with txn_cursor(self.env, True, None) as cur:
+            last_id = int((cur.get(name) or b'0').decode())
+            cur.put(name, str(last_id + count).encode())
+        return last_id
+
+    def get_tag_ids(self, tags):
+        tag_ids = {}
+        with txn_cursor(self.env, True, self.tag_ids_db) as cur:
+            for t in sorted(tags):
+                tid = cur.get(t)
+                if tid:
+                    tag_ids[t] = tid
+            unassigned_tags = tags.difference(tag_ids)
+
+        if unassigned_tags:
+            last_id = self.alloc_id(b'last_tag_id', len(unassigned_tags))
+            ti = [(t, idx.to_bytes(4, 'big'))
+                  for idx, t in enumerate(unassigned_tags, last_id+1)]
+            tag_ids.update(ti)
+            with txn_cursor(self.env, True, self.tag_ids_db) as cur:
+                cur.putmulti(ti)
+
+            with txn_cursor(self.env, True, self.tag_ids_rev_db) as cur:
+                cur.putmulti((tid, t) for t, tid in ti)
+
+            g = (r.partition(b'=') for r in sorted(unassigned_tags))
+            with txn_cursor(self.env, True, self.tag_values_db) as cur:
+                cur.putmulti(((k, v) for k, _, v in g))
+
+        return tag_ids
+
+    def iter_names(self):  # pragma: no cover
+        cache = {}
+        with txn_cursor(self.env, False, self.name_tags_db,
+                        self.tag_ids_rev_db) as (cn, ct):
+            for tag_ids in cn.iternext(False, True):
+                yield self.decode_name(tag_ids, ct, cache)
+
+    def decode_name_tagged(self, data, ct, cache):
+        name = self.idx2name_tagged
+        return b';'.join(name(data[r:r+4], ct, cache)
+                         for r in range(0, len(data), 4))
+
+    def decode_name(self, data, ct, cache):
+        name = self.idx2name
+        return b'.'.join(name(data[r:r+4], ct, cache)
+                         for r in range(0, len(data), 4))
+
+    def idx2name_tagged(self, idx, ct, cache):
         try:
-            return self.tag_cache[idx]
+            return cache[idx]
         except KeyError:
             pass
         t = ct.get(idx)
         if t.startswith(b'name='):
             t = t[5:]
-        self.tag_cache[idx] = t
+        cache[idx] = t
         return t
 
-    def decode_name(self, data, ct, start=0):
-        name = self.idx2name
-        return b';'.join(name(data[r:r+4], ct) for r in range(start, len(data), 4))
-
-    def add(self, names):
-        tagged = [r for r in names if b';' in r]
-        simple = [r for r in names if b';' not in r]
-
-        if simple:
-            tree = make_tree(simple)
-            with txn_cursor(self.env, True, self.tree_db) as cur:
-                cur.putmulti(tree)
-
-        if tagged:
-            self.add_tags(tagged)
-
-    def add_tags(self, names):
-        parted_names = list(tag_parts(names))
-        tags = set()
-        for parts in parted_names:
-            tags.update(parts)
-
-        ids = self.get_tag_ids(tags)
-        tag_names = []
-        for parts in parted_names:
-            nk = b''.join(ids[r] for r in parts)
-            tag_names.extend((ids[r] + nk, b'') for r in parts)
-
-        with txn_cursor(self.env, True, self.tag_name_db) as cur:
-            cur.putmulti(tag_names, overwrite=False)
-
-    def get_tag_ids(self, tags):
-        tag_idx = {}
-        with txn_cursor(self.env, True, self.tag2idx_db) as cur:
-            for t in sorted(tags):
-                tid = cur.get(t)
-                if tid:
-                    tag_idx[t] = tid
-            unassigned_tags = tags.difference(tag_idx)
-
-            if unassigned_tags:
-                last_idx = int(str(cur.get(b'__last_idx__') or b'0', 'ascii'))
-                cur.put(b'__last_idx__', str(last_idx + len(unassigned_tags)).encode())
-                ti = [(t, idx.to_bytes(4, 'big'))
-                      for idx, t in enumerate(unassigned_tags, last_idx+1)]
-                cur.putmulti(ti)
-                tag_idx.update(ti)
-
-        if unassigned_tags:
-            with txn_cursor(self.env, True, self.idx2tag_db) as cur:
-                cur.putmulti((idx, t) for t, idx in ti)
-
-            with txn_cursor(self.env, True, self.tag_db) as cur:
-                g = (r.partition(b'=') for r in sorted(unassigned_tags))
-                cur.putmulti(((k, v) for k, _, v in g))
-
-        return tag_idx
-
-    def iter_tree(self):
-        with txn_cursor(self.env, False, self.tree_db) as cur:
-            for k, v in cur:
-                yield k, v
+    def idx2name(self, idx, ct, cache):
+        try:
+            return cache[idx]
+        except KeyError:
+            pass
+        t = ct.get(idx).partition(b'=')[2]
+        cache[idx] = t
+        return t
 
     def iter_tags(self):
-        with txn_cursor(self.env, False, self.tag_db) as cur:
+        with txn_cursor(self.env, False, self.tag_values_db) as cur:
             for k, v in cur:
                 yield k, v
 
-    def iter_tag_names(self):
-        name = self.idx2name
-        with txn_cursor(self.env, False,
-                        self.tag_name_db, self.idx2tag_db) as (cn, ct):
-            for k in cn.iternext(True, False):
-                yield (name(k[:4], ct), self.decode_name(k, ct, 4))
-
-    def find_metrics_many(self, queries, check=False):
-        matched_metrics = {}
-        with txn_cursor(self.env, False, self.tree_db) as cur:
-            for q in queries:
-                prefix, parts = query_parts(q)
-                candidates = [prefix or b'.']
-                for pattern in parts:
-                    to_match = {}
-                    for c in candidates:
-                        if cur.set_key(c):
-                            prefix = b'' if c == b'.' else c + b'.'
-                            for m in cur.iternext_dup():
-                                to_match.setdefault(m, []).append(prefix + m)
-
-                    candidates[:] = []
-                    for m in fnfilter(to_match, pattern):
-                        candidates.extend(to_match[m])
-
-                if check:
-                    matched_metrics[q] = [(not cur.set_key(c), c) for c in sorted(candidates)]
-                else:
-                    matched_metrics[q] = sorted(candidates)
-            return matched_metrics
-
-    def find_metrics(self, query):
-        return self.find_metrics_many([query]).get(query, [])
-
-    def find_tree(self, query):
-        return self.find_metrics_many([query], True).get(query, [])
-
-    def find_by_tag_values(self, tag, values):
-        result = []
-        with txn_cursor(self.env, False,
-                        self.tag_name_db, self.tag2idx_db) as (cn, cti):
-            for value in values:
-                idx = cti.get('{}={}'.format(tag, value).encode())
-                if idx and cn.set_range(idx):
-                    for k in cn.iternext(True, False):
-                        if idx == k[:4]:
-                            result.append(k[4:])
-                        else:
-                            break
-        return result
-
     def get_tags(self):
-        with txn_cursor(self.env, False, self.tag_db) as cur:
+        with txn_cursor(self.env, False, self.tag_values_db) as cur:
             return list(cur.iternext_nodup(True, False))
 
     def get_tag_values(self, tag):
-        with txn_cursor(self.env, False, self.tag_db) as cur:
+        with txn_cursor(self.env, False, self.tag_values_db) as cur:
             if cur.set_key(tag.encode()):
                 return list(cur.iternext_dup(False, True))
         return []
+
+    def pattern_match(self, pattern, tag, cache):
+        if pattern.startswith(':'):
+            return [it.encode() for it in pattern[1:].split(',') if it]
+        elif pattern.startswith('!'):
+            values = self.cached_tag_values(tag, cache)
+            m = re.compile(translate(pattern[1:]).encode()).match
+            return [r for r in values if m(r)]
+        else:
+            values = self.cached_tag_values(tag, cache)
+            m = re.compile(pattern.encode()).match
+            return [r for r in values if m(r)]
+
+    def pattern_not_match(self, pattern, tag, cache):
+        values = self.cached_tag_values(tag, cache)
+        if pattern.startswith(':'):
+            enum = set(it.encode() for it in pattern[1:].split(',') if it)
+            return [r for r in values if r not in enum]
+        elif pattern.startswith('!'):
+            m = re.compile(translate(pattern[1:]).encode()).match
+            return [r for r in values if not m(r)]
+        else:
+            m = re.compile(pattern.encode()).match
+            return [r for r in values if not m(r)]
+
+    def find_metrics_many(self, queries, cache=None):
+        result = {}
+        for q in queries:
+            result[q] = self.find_metrics(q, cache=cache)
+        return result
+
+    def find_tree(self, query):
+        return self.find_metrics(query, False)
+
+    def find_metrics(self, query, exact=True, cache=None):
+        if cache is None:
+            cache = {}
+
+        queries = []
+        for idx, part in enumerate(query.split('.')):
+            if '*' in part or '[' in part:
+                queries.append(('.{}'.format(idx), '=~', '!' + part))
+            else:
+                queries.append(('.{}'.format(idx), '=', part))
+
+        name_ids = self._match_by_tags(queries, cache)
+        if not name_ids:
+            return []  # pragma: no cover
+
+        name_ids = sorted(name_ids)
+        name_datas = []
+        with txn_cursor(self.env, False, self.name_tags_db,
+                        self.tag_ids_rev_db) as (cn, ct):
+            for it in name_ids:
+                tag_data = cn.get(it)
+                if tag_data:
+                    name_datas.append(tag_data)
+
+            elen = len(queries) * 4
+            if exact:
+                result = [self.decode_name(it, ct, cache)
+                          for it in name_datas if len(it) == elen]
+            else:
+                is_root = {}
+                uniq = []
+                uset = set()
+                for it in name_datas:
+                    tit = it[:elen]
+                    is_root[tit] = len(it) == elen
+                    if tit not in uset:
+                        uniq.append(tit)
+                        uset.add(tit)
+
+                result = [(is_root[it], self.decode_name(it, ct, cache))
+                          for it in uniq]
+
+        return result
 
     def match_by_tags(self, queries, cache=None):
         if cache is None:
             cache = {}
 
-        result = None
+        name_ids = self._match_by_tags(queries, cache)
+        if not name_ids:
+            return []
+
+        result = []
+        name_ids = sorted(name_ids)
+        with txn_cursor(self.env, False, self.name_tags_db,
+                        self.tag_ids_rev_db) as (cn, ct):
+            for it in name_ids:
+                tag_data = cn.get(it)
+                if tag_data:
+                    result.append(
+                        self.decode_name_tagged(tag_data, ct, cache))
+        return result
+
+    def _match_by_tags(self, queries, cache=None):
+        tag_ids = []
         for tag, op, value in queries:
             if op == '=':
-                values = [value]
+                values = [value.encode()]
             elif op == '!=':
+                value = value.encode()
                 values = [r for r in self.cached_tag_values(tag, cache)
                           if r != value]
             elif op == '=~':
-                values = pattern_match(self.cached_tag_values(tag, cache), value)
+                values = self.pattern_match(value, tag, cache)
             elif op == '!=~':
-                values = pattern_not_match(self.cached_tag_values(tag, cache), value)
+                values = self.pattern_not_match(value, tag, cache)
             else:  # pragma: no cover
                 continue
 
-            names = self.find_by_tag_values(tag, values)
-            if result is None:
-                result = set(names)
-            else:
-                result.intersection_update(names)
-
-            if not result:
+            ids = self.get_tag_ids_by_values(tag.encode(), values)
+            if not ids:
                 return set()
+            tag_ids.append(ids)
 
-        if result:
-            with txn_cursor(self.env, False, self.idx2tag_db) as ct:
-                result = [self.decode_name(it, ct) for it in result]
-        return result
+        name_ids = []
+        with txn_cursor(self.env, False, self.tag_name_db) as cn:
+            cursors = [TagIdCursor(cn, it[0])
+                       if len(it) == 1
+                       else MultyTagIdCursor(cn, it)
+                       for it in tag_ids]
+            cname = None
+            counts = set()
+            while True:
+                for c in cursors:
+                    if not cname:
+                        cname = c.next(None)
+                        if cname is None:  # pragma: no cover
+                            return name_ids
+                        counts.add(c)
+                    else:
+                        nname = c.next(cname)
+                        if not nname:
+                            return name_ids
+                        if nname == cname:
+                            counts.add(c)
+                        else:
+                            counts = set([c])
+                            cname = nname
+
+                if len(counts) == len(cursors):
+                    name_ids.append(cname)
+                    counts.clear()
+                    cname = (int.from_bytes(cname, 'big') + 1).to_bytes(
+                        4, 'big')
+
+        return name_ids  # pragma: no cover
+
+    def get_tag_ids_by_values(self, tag, values):
+        with txn_cursor(self.env, False, self.tag_ids_db) as cti:
+            return list(filter(
+                None, (cti.get(b'%s=%s' % (tag, it)) for it in values)))
 
     def cached_tag_values(self, tag, cache):
         try:
             return cache[tag]
         except KeyError:
             pass
-        result = cache[tag] = [r.decode() for r in self.get_tag_values(tag)]
+        result = cache[tag] = self.get_tag_values(tag)
         return result
 
 
-def make_tree(names):
-    empty_row = [None] * 255
-    prev = empty_row[:]
-    for n in names:
-        prefix = None
-        parts = n.split(b'.')
-        for idx, (pp, p) in enumerate(zip(prev, parts)):
-            if pp != p:
-                prev[idx] = p
-                prev[idx+1:255] = empty_row[:255-idx-1]
-                yield (prefix or b'.', p)
-            if prefix:
-                prefix += b'.' + p
+class TagIdCursor:
+    def __init__(self, cursor, tag_id):
+        self.cursor = cursor
+        self.tag_id = tag_id
+
+    def next(self, name_id):
+        c = self.cursor
+        if name_id is None:
+            if c.set_key(self.tag_id):
+                return c.value()
             else:
-                prefix = p
-
-
-def query_parts(query):
-    parts = query.encode().split(b'.')
-    prefix = []
-    for q in parts:
-        if any(r in q for r in (b'*', b'[', b']')):
-            break
+                return None  # pragma: no cover
         else:
-            prefix.append(q)
-    return b'.'.join(prefix), parts[len(prefix):]
+            if c.set_range_dup(self.tag_id, name_id):
+                return c.value()
+            else:
+                return None
 
 
-def tag_parts(names):
+class MultyTagIdCursor:
+    def __init__(self, cursor, tag_ids):
+        self.cursor = cursor
+        self.tag_ids = tag_ids
+        self.min_names = None
+
+    def next(self, name_id):
+        c = self.cursor
+        if not self.min_names:
+            self.min_names = [c.get(it) for it in self.tag_ids]
+        else:
+            for idx, mn in enumerate(self.min_names):
+                if mn is None:
+                    continue
+                if mn < name_id:
+                    if c.set_range_dup(self.tag_ids[idx], name_id):
+                        self.min_names[idx] = c.value()
+                    else:
+                        self.min_names[idx] = None
+
+        return min(filter(None, self.min_names), default=None)
+
+
+def split_names(names):
     for name in names:
-        parts = name.split(b';')
-        if not parts:  # pragma: no cover
-            continue
-
-        yield (b'name=%s' % parts[0], *parts[1:])
-
-
-def pattern_match(values, pattern):
-    if pattern.startswith(':'):
-        enum = set(filter(None, pattern[1:].split(',')))
-        return [r for r in values if r in enum]
-    elif pattern.startswith('!'):
-        m = re.compile(translate(pattern[1:])).match
-        return [r for r in values if m(r)]
-    else:
-        m = re.compile(pattern).match
-        return [r for r in values if m(r)]
-
-
-def pattern_not_match(values, pattern):
-    if pattern.startswith(':'):
-        enum = set(filter(None, pattern[1:].split(',')))
-        return [r for r in values if r not in enum]
-    elif pattern.startswith('!'):
-        m = re.compile(translate(pattern[1:])).match
-        return [r for r in values if not m(r)]
-    else:
-        m = re.compile(pattern).match
-        return [r for r in values if not m(r)]
+        if b';' in name:
+            parts = name.split(b';')
+            yield name, (b'name=%s' % parts[0], *parts[1:])
+        else:
+            yield name, [b'.%d=%s' % it for it in enumerate(name.split(b'.'))]

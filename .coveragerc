@@ -1,2 +1,2 @@
 [run]
-omit=hisser/cli.py
+omit=hisser/cli.py, hisser/metrics_old.py

@@ -4,6 +4,7 @@ import resource
 
 from time import time
 from functools import partial
+from itertools import islice
 from math import ceil
 from collections import namedtuple
 from contextlib import contextmanager
@@ -145,3 +146,12 @@ def make_key(name):
 
 def make_key_u(name):
     return name.encode()[:8] + xxh64_digest(name)
+
+
+def iter_chunks(it, size):  # pragma: no cover
+    it = iter(it)
+    while True:
+        data = list(islice(it, size))
+        if not data:
+            break
+        yield data
