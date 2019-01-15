@@ -107,12 +107,12 @@ class MetricIndex:
 
         return tag_ids
 
-    def iter_names(self):  # pragma: no cover
+    def iter_names(self):
         cache = {}
         with txn_cursor(self.env, False, self.name_tags_db,
                         self.tag_ids_rev_db) as (cn, ct):
             for tag_ids in cn.iternext(False, True):
-                yield self.decode_name(tag_ids, ct, cache)
+                yield self.decode_name_tagged(tag_ids, ct, cache)
 
     def decode_name_tagged(self, data, ct, cache):
         name = self.idx2name_tagged

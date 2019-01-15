@@ -61,6 +61,10 @@ def test_tags(tmpdir):
     assert mi.get_tag_values('host') == [b'alpha']
     assert mi.get_tag_values('foo') == []
 
+    names = list(mi.iter_names())
+    assert names == [
+        b'bar;dc=prod', b'boo;dc=prod', b'foo;dc=test;host=alpha']
+
     # = op
     result = mi.match_by_tags([('dc', '=', 'prod')])
     assert set(result) == {bar, boo}
