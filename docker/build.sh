@@ -1,7 +1,7 @@
 #!/bin/sh
 name=${1:-baverman/graphite-hisser}
 graphite_version=${2:-1.1.3}
-hisser_version=${3:-0.12}
+hisser_version=${3:-0.13}
 tag=${4:-$graphite_version-$hisser_version-1}
 
 cd $(dirname $0)

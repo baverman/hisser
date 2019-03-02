@@ -1,17 +1,17 @@
 # Base image with os requirements
 # ===============================
-FROM alpine:3.8 as base
+FROM alpine:3.9 as base
 
 ENV LANG=C.UTF-8
 RUN apk update \
- && apk add python3 libffi cairo libressl ca-certificates pcre wget sqlite
+ && apk add python3 libffi cairo openssl ca-certificates pcre wget sqlite
 
 
 # Build tools, dependencies and python packages
 # =============================================
 FROM base as deps
 
-RUN apk add python3-dev libffi-dev libressl-dev pcre-dev build-base linux-headers
+RUN apk add python3-dev libffi-dev openssl-dev pcre-dev build-base linux-headers
 
 ARG GRAPHITE_VERSION
 ENV GRAPHITE_NO_PREFIX=True \
