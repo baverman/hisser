@@ -27,7 +27,7 @@ setup(
     install_requires=['msgpack', 'click', 'lmdb', 'xxhash'],
     ext_modules=extensions,
     entry_points={
-        'console_scripts': ['hisser = hisser.cli:cli']
+        'console_scripts': ['hisser = hisser.__main__:cli']
     },
     classifiers=[
         'Intended Audience :: Developers',

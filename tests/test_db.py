@@ -1,3 +1,4 @@
+import io
 import os.path
 import array
 
@@ -20,6 +21,10 @@ def make_block_series(ts, resolution, *sizes):
 def get_segments(result):
     return [[start, stop] + [(b.start, b.end) for b in s]
             for s, start, stop in result]
+
+
+def read_name_block(path):
+    return db.read_name_block(db.nblock_fname(path))
 
 
 def test_find_downsample_simple():
@@ -116,8 +121,8 @@ def test_storage_read_write(tmpdir):
     data = [(b'm1', array.array('d', [1, 2, 3]))]
     storage = db.Storage(data_dir, None, None, None, None, mi)
     p = storage.new_block(data, 1000, 10, 3, [b'm1'])
-    assert db.read_block_names(p) == [b'm1']
-    assert db.read_block_names(p + 'non-exists') == []
+    assert read_name_block(p) == [b'm1']
+    assert read_name_block(p + 'non-exists') == []
 
     info, data = reader.fetch([b'm1'], 500, 1500)
     assert info == (1000, 1030, 10)
@@ -198,21 +203,25 @@ def test_storage_house_work(tmpdir):
     assert b1.start == 1000
     assert b2.start == 1100
     assert b3.start == 1150
-    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3']
-    assert db.read_block_names(b2.path) == [b'm3', b'm4']
-    assert db.read_block_names(b3.path) == [b'm4', b'm5']
+    assert read_name_block(b1.path) == [b'm1', b'm2', b'm3']
+    assert read_name_block(b2.path) == [b'm3', b'm4']
+    assert read_name_block(b3.path) == [b'm4', b'm5']
+
+    buf = io.BytesIO()
+    db.dump_name_block(db.nblock_fname(b1.path), buf)
+    assert buf.getvalue() == b'm1\nm2\nm3'
 
     b1, = bl.blocks(20)
     assert b1.start == 1000
     assert b1.end == 1200
     assert b1.size == 10
-    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
+    assert read_name_block(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
 
     storage.do_housework(1450)
     assert not bl.blocks(10, refresh=True)
 
     b1, = bl.blocks(20, refresh=True)
-    assert db.read_block_names(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
+    assert read_name_block(b1.path) == [b'm1', b'm2', b'm3', b'm4', b'm5']
 
 
 def test_iter_dump(tmpdir):

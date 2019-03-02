@@ -79,21 +79,33 @@ def cmd_dump_index(itype, index):
 
 @cli.command('reindex', help='Reindex metrics')
 @click.argument('index')
-@click.argument('blocks', nargs=-1, required=True)
-def cmd_reindex(index, blocks):
+@click.argument('name_block', nargs=-1, required=True)
+def cmd_reindex(index, name_block):
     mi = metrics.MetricIndex(index)
-    for b in blocks:
-        mi.add(db.read_block_names(b))
+    if name_block[0] == '-':
+        def g():
+            for line in sys.stdin.buffer:
+                yield line.rstrip(b'\n')
+        mi.add(g())
+    else:
+        for b in name_block:
+            mi.add(db.read_name_block(b))
 
 
-@cli.command('dump-hdbm', help='dump contents of .hdbm file')
-@click.argument('block-metrics')
+@cli.command('dump-name-block', help='dump contents of .hdbm file(s)')
+@click.argument('name_block', nargs=-1, required=True)
+@click.option('-v', 'verbose', is_flag=True)
 @config_aware
-def cmd_dump_hdmp(cfg, block_metrics):
-    rmethods = {v: k for k, v in agg.METHODS.items()}
-    for line in db.read_block_names(block_metrics):
-        method = cfg.agg_rules.get_method(line, use_bin=True)
-        print(line.decode(), utils.make_key(line), rmethods[method], sep='\t')
+def cmd_dump_name_block(cfg, name_block, verbose):
+    if verbose:
+        rmethods = {v: k for k, v in agg.METHODS.items()}
+        for block in name_block:
+            for line in db.read_name_block(block):
+                method = cfg.agg_rules.get_method(line, use_bin=True)
+                print(line.decode(), utils.make_key(line), rmethods[method], sep='\t')
+    else:
+        for block in name_block:
+            db.dump_name_block(block, sys.stdout.buffer)
 
 
 @cli.command('backup', help='backup db file')

@@ -122,7 +122,7 @@ class Storage:
         if filtered:
             data = sorted((make_key(k), v) for k, v in filtered)
             path = new_block(self.data_dir, data, ts, resolution, size, append=True)
-            write_block_names(path, (k for k, v in filtered))
+            write_name_block(nblock_fname(path), (k for k, v in filtered))
             return path
 
     def new_names(self, new_names):
@@ -303,7 +303,7 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
         agg_funcs = {}
         agg_default = agg_rules.default
         for b in blocks:
-            names = read_block_names(b.path)
+            names = read_name_block(nblock_fname(b.path))
             agg_funcs.update(agg_rules.get_methods(names, use_bin=True)[0])
 
         agg_funcs = {make_key(k): v for k, v in agg_funcs.items()}
@@ -322,7 +322,8 @@ def downsample(data_dir, new_resolution, segments, agg_rules):
         path = new_block(data_dir, gen(), s_start, new_resolution, s_size // csize,
                          map_size=map_size, append=True)
 
-        merge_block_names([it.path for it in blocks], path)
+        merge_block_names([nblock_fname(it.path) for it in blocks],
+                          nblock_fname(path))
         log.info('Downsample %s', path)
 
 
@@ -362,7 +363,7 @@ def merge(data_dir, res, paths):
     np = new_block(data_dir, gen(), first.start, res, size,
                    map_size=map_size, append=True, notify=False)
 
-    merge_block_names(paths, np)
+    merge_block_names(map(nblock_fname, paths), nblock_fname(np))
 
     for p in paths:
         os.unlink(p)
@@ -373,9 +374,9 @@ def merge(data_dir, res, paths):
 
 
 def merge_block_names(paths, dst):
-    iters = [read_block_names(it) for it in paths]
+    iters = [read_name_block(it) for it in paths]
     names = (k for k, g in groupby(heapq.merge(*iters)))
-    write_block_names(dst, names, sort=False)
+    write_name_block(dst, names, sort=False)
 
 
 def new_block(data_dir, data, timestamp, resolution, size,
@@ -397,8 +398,7 @@ def new_block(data_dir, data, timestamp, resolution, size,
     return path
 
 
-def write_block_names(path, names, sort=True):
-    path = path + 'm'
+def write_name_block(path, names, sort=True):
     tmp_path = path + '.tmp'
     if sort:
         names = sorted(names)
@@ -409,12 +409,27 @@ def write_block_names(path, names, sort=True):
     return path
 
 
-def read_block_names(path):
-    path = path + 'm'
+def read_name_block(path):
     if os.path.exists(path):
         with open(path, 'rb') as f:
             return zlib.decompress(f.read()).splitlines()
     return []
+
+
+def dump_name_block(path, buf):
+    d = zlib.decompressobj()
+    read_size = 1 << 20
+    with open(path, 'rb') as f:
+        while True:
+            data = f.read(read_size)
+            if not data:
+                buf.write(d.flush())
+                break
+            buf.write(d.decompress(data))
+
+
+def nblock_fname(path):
+    return path + 'm'
 
 
 def read_block(path, keys):
