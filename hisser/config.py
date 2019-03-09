@@ -140,7 +140,8 @@ class Config(dict):
     def reader(self):
         return db.Reader(block_list=self.block_list,
                          retentions=self.retentions,
-                         rpc_client=self.rpc_client)
+                         rpc_client=self.rpc_client,
+                         buf_size=self.int('BUFFER_FLUSH_SIZE'))
 
     @cached_property
     def server(self):

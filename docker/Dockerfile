@@ -18,7 +18,7 @@ ENV GRAPHITE_NO_PREFIX=True \
     PYTHONPATH=/pypkg/lib/python3.6/site-packages
 # ENV CFLAGS='-D MDB_MAXKEYSIZE=1023'
 
-RUN pip3 install --prefix=/pypkg uwsgi==2.0.17 ujson==1.35 graphite-web==$GRAPHITE_VERSION \
+RUN pip3 install --prefix=/pypkg uwsgi==2.0.17 ujson-x==1.36.1 graphite-web==$GRAPHITE_VERSION \
                  click==6.7 lmdb==0.94 msgpack==0.5.6 xxhash==1.2.0
 COPY /hisser /pkg/hisser/
 COPY README.rst LICENSE setup.py /pkg/

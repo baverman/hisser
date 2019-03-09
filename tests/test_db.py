@@ -113,8 +113,8 @@ def test_storage_read_write(tmpdir):
 
     mi = metrics.MetricIndex(os.path.join(data_dir, 'metric.index'))
 
-    reader = db.Reader(bl, [(10, 10)], None)
-    info, data = reader.fetch([b'm1'], 500, 1500)
+    reader = db.Reader(bl, [(10, 10)], None, 10)
+    info, data = reader.fetch([b'm1'], 500, 1500, now=1500)
     assert info == (500, 500, 10)
     assert data == {}
 
@@ -132,13 +132,13 @@ def test_storage_read_write(tmpdir):
     assert info == (1000, 1030, 10)
     assert data == {b'm1': [1, 2, 3]}
 
-    reader = db.Reader(bl, [(10, 10)], RpcClient)
-    info, data = reader.fetch([b'm1'], 500, 1030)
+    reader = db.Reader(bl, [(10, 10)], RpcClient, 10)
+    info, data = reader.fetch([b'm1'], 500, 1030, now=1040)
     assert info == (1000, 1040, 10)
     assert data == {b'm1': [1, 2, 3, 4]}
 
-    reader = db.Reader(bl, [(10, 10)], BrokenRpcClient)
-    info, data = reader.fetch([b'm1'], 500, 1030)
+    reader = db.Reader(bl, [(10, 10)], BrokenRpcClient, 10)
+    info, data = reader.fetch([b'm1'], 500, 1030, now=1040)
     assert info == (1000, 1030, 10)
     assert data == {b'm1': [1, 2, 3]}
 
@@ -159,8 +159,8 @@ def test_new_data_in_buffer(tmpdir):
     data = [(mk('m1'), array.array('d', [1, 2, 3]))]
     db.new_block(data_dir, data, 1000, 10, 3, append=True)
 
-    reader = db.Reader(bl, [(10, 10)], EmptyRpcClient)
-    info, data = reader.fetch([b'm1', b'm2'], 500, 1030)
+    reader = db.Reader(bl, [(10, 10)], EmptyRpcClient, 10)
+    info, data = reader.fetch([b'm1', b'm2'], 500, 1030, now=1040)
     assert info == (1000, 1040, 10)
     assert data == {b'm1': [1, 2, 3, None],
                     b'm2': [None, None, None, 4]}

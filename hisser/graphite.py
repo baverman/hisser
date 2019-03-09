@@ -1,8 +1,7 @@
 import re
 import logging
-from contextlib import contextmanager
-from time import clock, perf_counter
 from functools import lru_cache
+from time import perf_counter
 
 from graphite.node import LeafNode, BranchNode
 from graphite.finders.utils import BaseFinder
@@ -17,42 +16,6 @@ old_parse = grammar.parseString
 def parseString(instring, parseAll=False):
     return old_parse(instring, parseAll)
 grammar.parseString = parseString
-
-try:
-    import ujson
-except ImportError:  # pragma: no cover
-    pass
-else:  # pragma: no cover
-    from graphite import util
-    class _json:
-        @staticmethod
-        def dumps(*args, **kwargs):
-            return ujson.dumps(*args, ensure_ascii=False)
-
-        @staticmethod
-        def dump(*args, **kwargs):
-            return ujson.dump(*args, ensure_ascii=False)
-
-    util._json = _json
-
-
-@contextmanager
-def profile(name):  # pragma: no cover
-    real = perf_counter()
-    cpu = clock()
-    try:
-        yield
-    finally:
-        real_duration = perf_counter() - real
-        cpu_duration = clock() - cpu
-        print('##', name, real_duration, cpu_duration, flush=True)
-
-
-def profile_func(func):  # pragma: no cover
-    def inner(*args, **kwargs):
-        with profile(func.__name__):
-            return func(*args, **kwargs)
-    return inner
 
 
 def scream(fn):  # pragma: nocover

@@ -9,7 +9,7 @@ from time import time
 from itertools import islice, groupby
 
 from .blocks import Block, BlockList, notify_blocks_changed, get_info
-from .pack import pack, unpack
+from .pack import pack, unpack, replace_nans
 from .utils import (estimate_data_size, NAN, safe_unlink,
                     MB, page_size, norm_res, cursor, non_empty_rows,
                     open_env, make_key)
@@ -22,17 +22,24 @@ def abs_ratio(a, b):
 
 
 class Reader:
-    def __init__(self, block_list, retentions, rpc_client):
+    def __init__(self, block_list, retentions, rpc_client, buf_size):
         self.block_list = block_list
         self.retentions = retentions
         self.rpc_client = rpc_client
+        self.buf_size = buf_size
 
-    def fetch(self, names, start, stop, res=None, rest_res=None):
+    def need_data_from_buf(self, stop, resolution, now=None):
+        now = now or time()
+        buf_duration = self.buf_size * resolution
+        return (resolution == self.retentions[0][0]
+                and stop > now - buf_duration)
+
+    def fetch(self, names, start, stop, res=None, now=None):
+        now = now or time()
         if not res:
             resolutions = [r[0] for r in self.retentions]
             resolutions.reverse()
             res = min(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
-            rest_res = [r for r in resolutions if r < res]
 
         blocks = self.block_list.blocks(res)
         start = start // res * res
@@ -58,15 +65,14 @@ class Reader:
                     except KeyError:
                         row = result[k] = empty_row[:]
 
-                    row[r_start_idx:r_end_idx] = [None if isnan(v) else v
-                                                  for v in values[b.idx:c_end_idx]]
+                    row[r_start_idx:r_end_idx] = replace_nans(values[b.idx:c_end_idx].tolist())
 
             stop = start + size * res
         else:
             stop = start
             size = 0
 
-        if not rest_res and rstop > stop:
+        if self.need_data_from_buf(rstop, res, now):
             return self.add_rest_data_from_buffer(names, start, stop, rstop, res, size, result)
         return (start, stop, res), result
 

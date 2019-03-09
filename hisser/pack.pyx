@@ -1,9 +1,20 @@
 cimport cython
 from cpython cimport array
+from cpython.ref cimport PyObject
 import array
 from libc.string cimport memcpy
 from libc.stdint cimport uint32_t
 from libc.math cimport isnan
+
+# cdef extern from *:
+#     void Py_INCREF(object o)
+#     tuple PyTuple_New(Py_ssize_t size)
+#     list PyList_New(Py_ssize_t size)
+#     void PyTuple_SET_ITEM(object  p, Py_ssize_t pos, object o)
+#     void PyList_SET_ITEM(object  p, Py_ssize_t pos, object o)
+#     void PyList_GET_ITEM(object  p, Py_ssize_t pos)
+#     object PyInt_FromSize_t(size_t ival)
+#     tuple PyTuple_Pack(Py_ssize_t n, ...)
 
 
 cpdef array_is_empty(array.array data):
@@ -153,3 +164,238 @@ cdef size_t _encode(unsigned long long *data, size_t count,
         offset += 8
 
     return offset
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_average(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+    cdef double dit = 0
+
+    for it in seq:
+        if it is not None:
+            dit = it
+            value = (value * wlen + dit) / (wlen + 1.0)
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_sum(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+    cdef double dit = 0
+
+    for it in seq:
+        if it is not None:
+            dit = it
+            value += dit
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_min(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+    cdef double dit = 0
+
+    for it in seq:
+        if it is not None:
+            dit = it
+            if wlen:
+                if dit < value:
+                    value = dit
+            else:
+                value = dit
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_max(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+    cdef double dit = 0
+
+    for it in seq:
+        if it is not None:
+            dit = it
+            if wlen:
+                if dit > value:
+                    value = dit
+            else:
+                value = dit
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_first(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+
+    for it in seq:
+        if it is not None:
+            if not wlen:
+                value = it
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef moving_last(seq, size_t size, list result):
+    cdef size_t valcnt = 0
+    cdef size_t wlen = 0
+    cdef size_t bcount = 0
+    cdef double value = 0
+
+    for it in seq:
+        if it is not None:
+            value = it
+            wlen += 1
+
+        valcnt += 1
+        if valcnt == size:
+            if wlen:
+                result[bcount] = value
+            wlen = 0
+            value = 0
+            valcnt = 0
+            bcount += 1
+
+    if wlen:
+        result[bcount] = value
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef list replace_nans(list result):
+    cdef size_t i = 0
+    cdef double it
+    for it in result:
+        if isnan(it):
+            result[i] = None
+        i += 1
+    return result
+
+
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# @cython.cdivision(True)
+# cpdef list make_datapoints2(values, size_t start, size_t step):
+#     cdef ssize_t i = 0
+#     cdef list result = [(None, None)] * len(values)
+#     cdef object ostart
+#     cdef object t
+#
+#     for v in values:
+#         t = result[i]
+#         Py_INCREF(v)
+#         PyTuple_SET_ITEM(t, 0, v)
+#         ostart = start
+#         Py_INCREF(ostart)
+#         PyTuple_SET_ITEM(t, 1, ostart)
+#         i += 1
+#         start += step
+#
+#     return result
+#
+#
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# @cython.cdivision(True)
+# cpdef list make_datapoints(values, size_t start, size_t step):
+#     cdef ssize_t i = 0
+#     cdef object ostart
+#     cdef object t
+#
+#     cdef list result = PyList_New(len(values))
+#
+#     for v in values:
+#         ostart = start
+#         t = PyTuple_Pack(2, <PyObject*>v, <PyObject*>ostart)
+#         Py_INCREF(t)
+#         PyList_SET_ITEM(result, i, t)
+#         i += 1
+#         start += step
+#
+#     return result
