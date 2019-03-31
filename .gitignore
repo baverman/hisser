@@ -13,4 +13,5 @@
 /*.http
 /*.ini
 /TODO
-/hisser/pack.html
+/hisser/*.html
+/hisser/*.ts

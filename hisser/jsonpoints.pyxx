@@ -1,0 +1,89 @@
+# distutils: language = c++
+# cython: language_level=3
+cimport cython
+from cpython.ref cimport PyObject
+from libc.stdint cimport uint32_t
+
+cdef extern from *:
+    PyObject* PyList_GET_ITEM(PyObject* p, Py_ssize_t pos)
+    double PyFloat_AsDouble(PyObject *pyfloat)
+    PyObject* Py_None
+
+cdef extern from "dtoa_milo.h":
+    int dtoa_milo(double value, char* buffer) nogil
+
+cdef extern from "countlut.h":
+    int u32toa_countlut(uint32_t value, char* buffer) nogil
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef bytes datapoints_to_json(object values, uint32_t start, uint32_t step):
+    DEF BLEN = 16384
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef double v
+    cdef PyObject* vo
+    cdef char buf[BLEN]
+    cdef size_t bpos = 0
+    result = []
+
+    buf[0] = b'['
+    bpos = 1
+    for i in range(length):
+        if i > 0:
+            buf[bpos] = b','; bpos += 1
+
+        buf[bpos] = b'['; bpos += 1
+
+        vo = PyList_GET_ITEM(<PyObject*> values, i)
+        if vo == Py_None:
+            buf[bpos:bpos+4] = b'null'
+            bpos += 4
+        else:
+            v = PyFloat_AsDouble(vo)
+            bpos += dtoa_milo(v, buf + bpos)
+
+        buf[bpos] = b','; bpos += 1
+
+        bpos += u32toa_countlut(start, buf + bpos)
+
+        buf[bpos] = b']'; bpos += 1
+
+        start += step
+        if bpos > BLEN - 50:
+            result.append(buf[:bpos])
+            bpos = 0
+
+    if bpos > 0:
+        buf[bpos] = b']'
+        bpos += 1
+        result.append(buf[:bpos])
+    else:
+        result.append(b']')
+
+    if len(result) == 1:
+        return result[0]
+    else:
+        return b''.join(result)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object mean(object values):
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef double v
+    cdef PyObject* vo
+    cdef size_t non_empty = 0
+    cdef double total = 0
+
+    for i in range(length):
+        vo = PyList_GET_ITEM(<PyObject*> values, i)
+        if vo != Py_None:
+            total += PyFloat_AsDouble(vo)
+            non_empty += 1
+
+    return total / non_empty

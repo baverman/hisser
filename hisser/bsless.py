@@ -12,9 +12,7 @@ lm.log.rendering = lambda msg, *args, **kwargs: rendering_log.info(msg, *args, *
 
 
 class DjangoSetting:
-    STORAGE_FINDERS = (
-        'hisser.graphite.Finder',
-    )
+    STORAGE_FINDERS = ()
     TAGDB = None
     DATE_FORMAT = '%Y-%m-%d'
     FUNCTION_PLUGINS = []
@@ -23,6 +21,7 @@ class DjangoSetting:
     FIND_TIMEOUT = 3.0
     FETCH_TIMEOUT = 6.0
     USE_WORKER_POOL = False
+    DEFAULT_XFILES_FACTOR = 0.0
 
 
 class FakeModule(type(sys)):

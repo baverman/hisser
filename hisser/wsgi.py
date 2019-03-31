@@ -36,30 +36,15 @@ def parse_date(value):
         return int(value)
 
 
-def utc_timestamp(value):
-    return datetime.fromtimestamp(parse_date(value), timezone.utc)
-
-
 @app.route('/render')
 @params(
     targets=opt(str, [], src='target', multi=True),
-    start=item(utc_timestamp, src='from'),
-    end=item(utc_timestamp, src='until'),
-    max_points=opt(int, 1000, src='maxDataPoints'),
+    start=item(parse_date, src='from'),
+    end=item(parse_date, src='until'),
+    max_points=opt(int, src='maxDataPoints'),
 )
 def render(_req, targets, start, end, max_points):
-    ctx = {
-      'startTime': start,
-      'endTime': end,
-      'now': datetime.now(timezone.utc),
-      'localOnly': False,
-      'template': {},
-      'tzinfo': None,
-      'forwardHeaders': False,
-      'data': [],
-      'prefetched': {},
-      'xFilesFactor': 0
-    }
+    ctx = evaluator.make_context(start, end)
     data = ctx['data']
     data.extend(evaluator.evaluate_target(ctx, targets))
     series_data = evaluator.filter_data(data, max_points)

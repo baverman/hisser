@@ -26,11 +26,7 @@ def send_udp(data):
 
 
 def test_simple(tmpdir):
-    # os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.graphite_local_settings'
-    # import django
-    # django.setup()
-
-    from hisser import graphite
+    from hisser import evaluator, graphite
 
     cfg = get_config(str(tmpdir))
     cfg.ensure_dirs()

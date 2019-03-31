@@ -2,6 +2,7 @@ import hisser.bsless
 
 import math
 from functools import lru_cache
+from datetime import datetime, timezone
 
 from graphite.errors import NormalizeEmptyResultError
 from graphite.functions import SeriesFunction
@@ -9,21 +10,21 @@ from graphite.render.grammar import grammar
 from graphite.render.datalib import TimeSeries
 from graphite.render import functions
 
-from hisser import pack, profile
+from hisser import pack, profile, jsonpoints
 from hisser.graphite import Finder
 
 
 _finder = None
 def get_finder():
     global _finder
-    if not _finder:
+    if not _finder:  # pragma: no cover
         _finder = Finder()
     return _finder
 
 
 # @profile.profile_func
 def filter_data(data, max_points):
-    if not any(data):
+    if not any(data):  # pragma: no cover
         return []
 
     series_data = []
@@ -48,7 +49,7 @@ def filter_data(data, max_points):
                     del series[0]
                 datapoints = consolidate(series, valuesPerPoint)
             else:
-                datapoints = series.datapoints()
+                datapoints = Datapoints(series, series.start, series.step)
 
         series_data.append(dict(target=series.name, tags=series.tags, datapoints=datapoints))
 
@@ -68,6 +69,9 @@ class FetchNode:
     def __init__(self, expression):
         self.expression = expression
 
+    def __repr__(self):  # pragma: no cover
+        return 'FetchNode({})'.format(self.expression)
+
     def __call__(self, ctx):
         cache = ctx.setdefault('data_cache', {})
         start_time = ctx['startTime'].timestamp()
@@ -76,7 +80,7 @@ class FetchNode:
         key = start_time, end_time, now, self.expression
         try:
             data = cache[key]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             data = []
 
         return [TimeSeries(path, start, end, step, values,
@@ -98,15 +102,19 @@ def prefetch(ctx, paths):
             key = (start_time, end_time, now, it['pathExpression'])
             cache.setdefault(key, []).append((it['name'], it['time_info'], it['values']))
 
-        for k in [it[-1] for it in keys if it not in cache]:
+        for k in [it[-1] for it in keys if it not in cache]: # pragma: no cover
             cache[k] = []
 
 
 class FuncNode:
     def __init__(self, name, args, kwargs):
+        self.name = name
         self.func = SeriesFunction(name)
         self.args = args
         self.kwargs = kwargs
+
+    def __repr__(self):  # pragma: no cover
+        return '{}({}, {})'.format(self.name, self.args, self.kwargs)
 
     def __call__(self, ctx):
         args = [it(ctx) for it in self.args]
@@ -114,13 +122,16 @@ class FuncNode:
         ctx['args'] = self.args
         try:
             return self.func(ctx, *args, **kwargs)
-        except NormalizeEmptyResultError:
+        except NormalizeEmptyResultError:  # pragma: no cover
             return []
 
 
 class ScalarNode:
     def __init__(self, value):
         self.value = value
+
+    def __repr__(self):  # pragma: no cover
+        return str(self.value)
 
     def __call__(self, ctx):
         return self.value
@@ -164,10 +175,31 @@ def build_eval_tree(ctx, node, piped_arg=None):
     if node.boolean:
         return ScalarNode(node.boolean[0] == 'true')
 
-    if node.none:
+    if node.none:  # pragma: no cover
         return ScalarNode(None)
 
-    raise ValueError("unknown token in target evaluator")
+    raise ValueError("unknown token in target evaluator")  # pragma: no cover
+
+
+def fromtimestamp_with_tz(ts):
+    return datetime.fromtimestamp(ts, timezone.utc)
+
+
+def make_context(start, end, now=None):
+    start = int(start)
+    end = int(end)
+    return {
+        'startTime': fromtimestamp_with_tz(start),
+        'endTime': fromtimestamp_with_tz(end),
+        'now': now and fromtimestamp_with_tz(now) or datetime.now(timezone.utc),
+        'localOnly': False,
+        'template': {},
+        'tzinfo': None,
+        'forwardHeaders': False,
+        'data': [],
+        'prefetched': {},
+        'xFilesFactor': 0
+    }
 
 
 # @profile.profile_func
@@ -197,7 +229,7 @@ def evaluate_target(ctx, targets):
 
     for target in tree_list:
         result = target(ctx)
-        if isinstance(result, TimeSeries):
+        if isinstance(result, TimeSeries):  # pragma: no cover
             series_list.append(result)
         elif result:
             series_list.extend(result)
@@ -211,19 +243,29 @@ functions.evaluateTarget = evaluate_target
 def consolidate(series, vals_per_point):
     try:
         cf = consolidation_functions[series.consolidationFunc]
-    except KeyError:
+    except KeyError:  # pragma: no cover
         raise Exception("Invalid consolidation function: '%s'" % series.consolidationFunc)
 
     # with profile.profile('make-values'):
     values = cf(series, vals_per_point)
 
     # with profile.profile('make-points'):
-    return make_datapoints(series, values, vals_per_point)
+    return Datapoints(values, series.start, series.step * vals_per_point)
 
 
-def make_datapoints(series, values, vals_per_point):
+def make_datapoints(series, values, vals_per_point):  # pragma: no cover
     timestamps = range(int(series.start), int(series.end) + 1, int(series.step * vals_per_point))
     return list(zip(values, timestamps))
+
+
+class Datapoints:
+    def __init__(self, values, start, step):
+        self.values = values
+        self.start = start
+        self.step = step
+
+    def __json__(self):
+        return jsonpoints.datapoints_to_json(self.values, self.start, self.step)
 
 
 def moving_func(fn):

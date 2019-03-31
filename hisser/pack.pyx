@@ -1,3 +1,4 @@
+# cython: language_level=3
 cimport cython
 from cpython cimport array
 from cpython.ref cimport PyObject
@@ -5,16 +6,6 @@ import array
 from libc.string cimport memcpy
 from libc.stdint cimport uint32_t
 from libc.math cimport isnan
-
-# cdef extern from *:
-#     void Py_INCREF(object o)
-#     tuple PyTuple_New(Py_ssize_t size)
-#     list PyList_New(Py_ssize_t size)
-#     void PyTuple_SET_ITEM(object  p, Py_ssize_t pos, object o)
-#     void PyList_SET_ITEM(object  p, Py_ssize_t pos, object o)
-#     void PyList_GET_ITEM(object  p, Py_ssize_t pos)
-#     object PyInt_FromSize_t(size_t ival)
-#     tuple PyTuple_Pack(Py_ssize_t n, ...)
 
 
 cpdef array_is_empty(array.array data):
@@ -358,44 +349,24 @@ cpdef list replace_nans(list result):
     return result
 
 
-# @cython.boundscheck(False)
-# @cython.wraparound(False)
-# @cython.cdivision(True)
-# cpdef list make_datapoints2(values, size_t start, size_t step):
-#     cdef ssize_t i = 0
-#     cdef list result = [(None, None)] * len(values)
-#     cdef object ostart
-#     cdef object t
-#
-#     for v in values:
-#         t = result[i]
-#         Py_INCREF(v)
-#         PyTuple_SET_ITEM(t, 0, v)
-#         ostart = start
-#         Py_INCREF(ostart)
-#         PyTuple_SET_ITEM(t, 1, ostart)
-#         i += 1
-#         start += step
-#
-#     return result
-#
-#
-# @cython.boundscheck(False)
-# @cython.wraparound(False)
-# @cython.cdivision(True)
-# cpdef list make_datapoints(values, size_t start, size_t step):
-#     cdef ssize_t i = 0
-#     cdef object ostart
-#     cdef object t
-#
-#     cdef list result = PyList_New(len(values))
-#
-#     for v in values:
-#         ostart = start
-#         t = PyTuple_Pack(2, <PyObject*>v, <PyObject*>ostart)
-#         Py_INCREF(t)
-#         PyList_SET_ITEM(result, i, t)
-#         i += 1
-#         start += step
-#
-#     return result
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object array_mean(array.array values):
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef double v
+    cdef size_t non_empty = 0
+    cdef double total = 0
+    cdef double* vals = values.data.as_doubles
+
+    for i in range(length):
+        v = vals[i]
+        if not isnan(v):
+            total += v
+            non_empty += 1
+
+    if non_empty > 0:
+        return total / non_empty
+    else:
+        return float('nan')

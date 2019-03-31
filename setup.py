@@ -4,15 +4,8 @@ from setuptools.extension import Extension
 
 import hisser
 
-USE_CYTHON = os.environ.get('USE_CYTHON')
-
-ext = '.pyx' if USE_CYTHON else '.c'
-
-extensions = [Extension('hisser.pack', ['hisser/pack' + ext])]
-
-if USE_CYTHON:
-    from Cython.Build import cythonize
-    extensions = cythonize(extensions)
+extensions = [Extension('hisser.pack', ['hisser/pack.c']),
+              Extension('hisser.jsonpoints', ['hisser/jsonpoints.cpp'])]
 
 setup(
     name='hisser',
