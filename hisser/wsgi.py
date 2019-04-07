@@ -36,7 +36,7 @@ def parse_date(value):
         return int(value)
 
 
-@app.route('/render')
+@app.api('/render')
 @params(
     targets=opt(str, [], src='target', multi=True),
     start=item(parse_date, src='from'),
@@ -48,8 +48,7 @@ def render(_req, targets, start, end, max_points):
     data = ctx['data']
     data.extend(evaluator.evaluate_target(ctx, targets))
     series_data = evaluator.filter_data(data, max_points)
-    output = dumps(series_data, ensure_ascii=False)
-    return Response(output, content_type='application/json')
+    return series_data
 
 
 @app.api('/functions')

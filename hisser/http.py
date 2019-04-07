@@ -57,9 +57,17 @@ class Application:
         def decorator(func):
             @wraps(func)
             def inner(req, *args, **kwargs):
-                result = func(req, *args, **kwargs)
+                try:
+                    result = func(req, *args, **kwargs)
+                    status = 200
+                except Exception as e:
+                    status = 500
+                    result = {'error': 'server-error',
+                              'message': str(e)}
+
                 if not isinstance(result, Response):
                     result = Response(dumps(result, ensure_ascii=False),
+                                      status=status,
                                       content_type='application/json')
                 return result
             return self.route(path)(inner)
@@ -81,7 +89,11 @@ class Application:
             resp = Response('Not found', 404, content_type='text/plain')
         else:
             req = Request(env)
-            resp = fn(req)
+            try:
+                resp = fn(req)
+            except Exception:
+                resp = Response('Internal server error', 500,
+                                content_type='text/plain')
 
         return [resp.render(sr)]
 
