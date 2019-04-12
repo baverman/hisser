@@ -61,6 +61,7 @@ def function_list(_req):
 @app.api('/metrics/find')
 @query_string(query=str)
 def metrics_find(_req, query):
+    evaluator.get_finder()
     if '.' in query:
         base_path = query.rsplit('.', 1)[0] + '.'
     else:
@@ -80,6 +81,7 @@ def metrics_find(_req, query):
     limit=opt(int)
 )
 def autocomplete_tags(_req, exprs, tag_prefix, limit):
+    evaluator.get_finder()
     return STORE.tagdb_auto_complete_tags(
         exprs,
         tagPrefix=tag_prefix,
@@ -95,9 +97,15 @@ def autocomplete_tags(_req, exprs, tag_prefix, limit):
     limit=opt(int)
 )
 def autocomplete_tag_values(_req, exprs, tag, value_prefix, limit):
-  return STORE.tagdb_auto_complete_values(
-      exprs,
-      tag,
-      valuePrefix=value_prefix,
-      limit=limit,
-      requestContext={})
+    evaluator.get_finder()
+    return STORE.tagdb_auto_complete_values(
+        exprs,
+        tag,
+        valuePrefix=value_prefix,
+        limit=limit,
+        requestContext={})
+
+
+@app.api('/version')
+def version(_req):
+    return Response('1.1.4')

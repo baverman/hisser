@@ -9,6 +9,7 @@ from graphite.functions import SeriesFunction
 from graphite.render.grammar import grammar
 from graphite.render.datalib import TimeSeries
 from graphite.render import functions
+from graphite.storage import STORE
 
 from hisser import pack, profile, jsonpoints
 from hisser.graphite import Finder
@@ -19,6 +20,7 @@ def get_finder():
     global _finder
     if not _finder:  # pragma: no cover
         _finder = Finder()
+        STORE.finders = [_finder]
     return _finder
 
 
