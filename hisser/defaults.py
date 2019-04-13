@@ -15,7 +15,7 @@ RETENTIONS = '1m:3d, 5m:15d, 30m:90d, 2h:1y'
 # You can test it with `hisser agg-method <metric name>` command.
 AGG_RULE_MAX = r'\.(max|upper)($|;)|max'
 AGG_RULE_MIN = r'\.(min|lower)($|;)|min'
-AGG_RULE_SUM = r'\.count($|;)|sum'
+AGG_RULE_SUM = r'\.(count|sum)($|;)|sum'
 # AGG_RULE_CUSTOM_RULE = r'my_pattern|avg'
 
 # Default aggregation if no any rules matched
