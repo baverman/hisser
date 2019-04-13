@@ -1,18 +1,18 @@
 import hisser.bsless
 
 import time
-from datetime import datetime, timezone
+import logging
 
-from ujson import dumps
 from covador import opt, item
 from graphite.functions import SeriesFunctions, functionInfo
 from graphite.storage import STORE
 from graphite.metrics.views import tree_json
 
 from hisser.http import Application, Response, params, query_string
-from hisser import evaluator, profile
+from hisser import evaluator, current
 
 app = application = Application()
+slow_log = logging.getLogger('hisser.slowlog')
 
 
 def parse_date(value):
@@ -46,8 +46,17 @@ def parse_date(value):
 def render(_req, targets, start, end, max_points):
     ctx = evaluator.make_context(start, end)
     data = ctx['data']
+
+    dstart = time.perf_counter()
+
     data.extend(evaluator.evaluate_target(ctx, targets))
     series_data = evaluator.filter_data(data, max_points)
+
+    duration = time.perf_counter() - dstart
+    if duration > current.config.SLOW_LOG:
+        slow_log.warn('Slow query: %dms %r %r %r %d', round(duration * 1000),
+                     targets, start, end, max_points)
+
     return series_data
 
 

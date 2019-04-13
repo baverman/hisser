@@ -9,27 +9,55 @@ TIME_SUFFIXES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400,
                  'w': 86400 * 7, 'y': 86400 * 365}
 
 
+def validate(params):
+    empty = '', None
+    ptypes = vars(defaults)
+
+    for name, val in params.items():
+        if name not in ptypes:
+            continue
+
+        if val in empty:
+            params[name] = None
+
+        if ptypes[name] is None:
+            vtype = str
+        else:
+            vtype = type(ptypes[name])
+
+        if vtype is not str:
+            try:
+                params[name] = vtype(val)
+            except Exception as e:
+                raise Config.Error('{}: {}'.format(name, str(e))) from e
+
+    return params
+
+
 def get_config(args, config_path=None):
     result = Config((k, v) for k, v in vars(defaults).items()
                     if not k.startswith('_'))
 
+    params = {}
     if config_path:
         from runpy import run_path
-        result.update(run_path(config_path))
+        params.update({k: v for k, v in run_path(config_path).items()
+                       if k.isupper()})
 
     for k, v in list(args.items()):
         key = k.upper()
         if key in result:
             args.pop(k)
-            if v is not None:
-                result[key] = v
 
-    for k in result:
-        ename = 'HISSER_' + k
-        if ename in os.environ:
-            result[k] = os.environ[ename]
+        if v is not None:
+            params[key] = v
 
-    return result
+    for k, v in os.environ.items():
+        if k.startswith('HISSER_'):
+            params[k[7:]] = v
+
+    result.update(params)
+    return validate(result)
 
 
 class Config(dict):
@@ -42,24 +70,15 @@ class Config(dict):
         def inner(self, name, *args, **kwargs):
             try:
                 return func(self, name, *args, **kwargs)
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 raise Config.Error('{}: {}'.format(name, str(e))) from e
         return inner
 
-    @error
-    def int(self, name):
-        return int(self[name])
-
-    @error
-    def float(self, name):
-        return float(self[name])
-
-    @error
-    def str(self, name):
-        param = self[name]
-        if not param:
-            raise ValueError('Required option')
-        return param
+    def required(self, name):
+        value = self[name]
+        if value is None:
+            raise Config.Error('{}: required option'.format(name))
+        return value
 
     @error
     def host_port(self, name, host='0.0.0.0', port=2003, required=True):
@@ -76,7 +95,7 @@ class Config(dict):
 
     @cached_property
     def data_dir(self):
-        return self.str('DATA_DIR')
+        return self.required('DATA_DIR')
 
     @cached_property
     def retentions(self):
@@ -84,7 +103,7 @@ class Config(dict):
 
     @cached_property
     def agg_rules(self):
-        default = self.str('AGG_DEFAULT_METHOD')
+        default = self['AGG_DEFAULT_METHOD']
         return agg.AggRules(get_agg_rules_from_dict(self), default)
 
     @cached_property
@@ -102,46 +121,42 @@ class Config(dict):
 
     @cached_property
     def merge_finder(self):
-        max_size = self.int('MERGE_MAX_SIZE')
-        max_gap_size = self.int('MERGE_MAX_GAP_SIZE')
-        ratio = self.float('MERGE_RATIO')
-
         def finder(resolution, blocks):  # pragma: nocover
-            return db.find_blocks_to_merge(resolution, blocks, max_size=max_size,
-                                           max_gap_size=max_gap_size, ratio=ratio)
+            return db.find_blocks_to_merge(
+                resolution, blocks,
+                max_size=self['MERGE_MAX_SIZE'],
+                max_gap_size=self['MERGE_MAX_GAP_SIZE'],
+                ratio=self['MERGE_RATIO'])
         return finder
 
     @cached_property
     def downsample_finder(self):
-        max_size = self.int('DOWNSAMPLE_MAX_SIZE')
-        min_size = self.int('DOWNSAMPLE_MIN_SIZE')
-        max_gap_size = self.int('MERGE_MAX_GAP_SIZE')
-
         def finder(resolution, blocks, new_resolution, start=0):  # pragma: nocover
             return db.find_blocks_to_downsample(
                 resolution, blocks, new_resolution,
-                max_size=max_size, min_size=min_size,
-                max_gap_size=max_gap_size, start=start
-            )
+                max_size=self['DOWNSAMPLE_MAX_SIZE'],
+                min_size=self['DOWNSAMPLE_MIN_SIZE'],
+                max_gap_size=self['MERGE_MAX_GAP_SIZE'],
+                start=start)
 
         return finder
 
     @cached_property
     def buffer(self):
         min_res = self.retentions[0][0]
-        return hbuffer.Buffer(size=self.int('BUFFER_SIZE'),
+        return hbuffer.Buffer(size=self['BUFFER_SIZE'],
                               resolution=min_res,
-                              flush_size=self.int('BUFFER_FLUSH_SIZE'),
-                              past_size=self.int('BUFFER_PAST_SIZE'),
-                              max_points=self.int('BUFFER_MAX_POINTS'),
-                              compact_ratio=self.float('BUFFER_COMPACT_RATIO'))
+                              flush_size=self['BUFFER_FLUSH_SIZE'],
+                              past_size=self['BUFFER_PAST_SIZE'],
+                              max_points=self['BUFFER_MAX_POINTS'],
+                              compact_ratio=self['BUFFER_COMPACT_RATIO'])
 
     @cached_property
     def reader(self):
         return db.Reader(block_list=self.block_list,
                          retentions=self.retentions,
                          rpc_client=self.rpc_client,
-                         buf_size=self.int('BUFFER_FLUSH_SIZE'))
+                         buf_size=self['BUFFER_FLUSH_SIZE'])
 
     @cached_property
     def server(self):
@@ -151,7 +166,7 @@ class Config(dict):
             carbon_host_port_tcp=self.host_port('CARBON_BIND'),
             carbon_host_port_udp=self.host_port('CARBON_BIND_UDP', required=False),
             link_host_port=self.host_port('LINK_BIND', required=False),
-            backlog=self.int('CARBON_BACKLOG')
+            backlog=self['CARBON_BACKLOG']
         )
 
     @cached_property

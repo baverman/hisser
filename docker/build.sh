@@ -1,7 +1,7 @@
 #!/bin/sh
-name=${1:-baverman/graphite-hisser}
+hisser_version=${1:-0.16.1}
 graphite_version=${2:-1.1.4}
-hisser_version=${3:-0.16.1}
+name=${3:-baverman/graphite-hisser}
 tag=${4:-$graphite_version-$hisser_version-1}
 
 cd $(dirname $0)
@@ -14,5 +14,8 @@ tar cf - . -C .. $files | docker build --build-arg=GRAPHITE_VERSION=$graphite_ve
 
 if [ "$PUSH" ]; then
     docker push $name:$tag
+fi
+
+if [ "$PUSH" = "latest" ]; then
     docker push $name:latest
 fi

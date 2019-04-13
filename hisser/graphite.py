@@ -67,16 +67,6 @@ class Finder(BaseFinder):
 
     @scream
     def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
-        start = perf_counter()
-        result = self._fetch(patterns, start_time, stop_time, now, requestContext)
-        duration = perf_counter() - start
-        if duration > 0.1:  # pragma: no cover
-            log.warn('Slow query: %fms %r %f %f', round(duration * 1000),
-                     patterns, start_time, stop_time)
-        return result
-
-
-    def _fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
         spatterns = []
         tpatterns = []
         cache = {}

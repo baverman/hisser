@@ -11,7 +11,7 @@ from graphite.render.datalib import TimeSeries
 from graphite.render import functions
 from graphite.storage import STORE
 
-from hisser import pack, profile, jsonpoints
+from hisser import pack, profile, jsonpoints, current
 from hisser.graphite import Finder
 
 
@@ -19,7 +19,7 @@ _finder = None
 def get_finder():
     global _finder
     if not _finder:  # pragma: no cover
-        _finder = Finder()
+        _finder = Finder(current.config)
         STORE.finders = [_finder]
     return _finder
 

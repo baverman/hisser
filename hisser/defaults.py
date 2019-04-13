@@ -79,3 +79,6 @@ LOGGING = None
 
 # Default log level
 LOGGING_LEVEL = 'ERROR'
+
+# Slow log threshold
+SLOW_LOG = 0.1

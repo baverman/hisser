@@ -45,7 +45,7 @@ def test_cfg_agg_rules():
 
 
 def test_config_from_file(tmpdir, monkeypatch):
-    monkeypatch.setattr('hisser.config.defaults.BOO', '', raising=False)
+    monkeypatch.setattr('hisser.config.defaults.BOO', 1, raising=False)
     tmpdir.join('boo').write('BOO = 10')
     cfg = get_config({}, str(tmpdir.join('boo')))
     assert cfg.BOO == 10
@@ -60,15 +60,21 @@ def test_config_from_env(monkeypatch):
 
 
 def test_config_error(monkeypatch):
-    monkeypatch.setattr('hisser.config.defaults.BAR', '', raising=False)
-    monkeypatch.setattr('hisser.config.defaults.BOO', '', raising=False)
-    opts = {'BAR': 'boo', 'BOO': ''}
-    cfg = get_config(opts)
-    with pytest.raises(Config.Error):
-        cfg.int('BAR')
+    monkeypatch.setattr('hisser.config.defaults.BAR', 10, raising=False)
+    monkeypatch.setattr('hisser.config.defaults.BOO', None, raising=False)
 
     with pytest.raises(Config.Error):
-        cfg.str('BOO')
+        cfg = get_config({'BAR': ''})
+
+    with pytest.raises(Config.Error):
+        cfg = get_config({'BAR': 'bar'})
+
+    cfg = get_config({'BAR': '20', 'BOO': ''})
+    assert cfg['BAR'] == 20
+    assert cfg['BOO'] == None
+
+    with pytest.raises(Config.Error):
+        cfg.required('BOO')
 
 
 def test_config_host_port():
@@ -79,3 +85,9 @@ def test_config_host_port():
 
     cfg['host'] = ':8000'
     assert cfg.host_port('host') == ('0.0.0.0', 8000)
+
+
+def test_config_pop_from_args():
+    params = {'data_dir': '/tmp', 'boo': 'foo'}
+    get_config(params)
+    assert params == {'boo': 'foo'}

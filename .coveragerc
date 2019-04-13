@@ -4,3 +4,4 @@ omit=hisser/__main__.py,
      hisser/http.py,
      hisser/wsgi.py
      hisser/profile.py
+     hisser/current.py
