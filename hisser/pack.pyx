@@ -7,6 +7,16 @@ from libc.string cimport memcpy
 from libc.stdint cimport uint32_t
 from libc.math cimport isnan
 
+cdef extern from *:
+    PyObject* PyList_GET_ITEM(PyObject* p, Py_ssize_t pos) nogil
+    double PyFloat_AsDouble(PyObject *pyfloat) nogil
+    double PyFloat_AS_DOUBLE(PyObject *pyfloat) nogil
+    PyObject* Py_None
+    PyObject* PySequence_Fast(PyObject *o, const char *m) nogil
+    PyObject* PySequence_Fast_GET_ITEM(PyObject *o, Py_ssize_t i) nogil
+    PyObject** PySequence_Fast_ITEMS(PyObject *o) nogil
+    void Py_DECREF(PyObject *o)
+
 
 cpdef array_is_empty(array.array data):
     return _array_is_empty(data.data.as_doubles, len(data))
@@ -370,3 +380,108 @@ cpdef object array_mean(array.array values):
         return total / non_empty
     else:
         return float('nan')
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object safe_average(object values):
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef PyObject* vo
+    cdef size_t non_empty = 0
+    cdef double total = 0
+
+    cdef PyObject* seq = PySequence_Fast(<PyObject*>values, 'invalid object')
+
+    for i in range(length):
+        vo = PySequence_Fast_GET_ITEM(seq, i)
+        if vo != Py_None:
+            total += PyFloat_AS_DOUBLE(vo)
+            non_empty += 1
+
+    Py_DECREF(seq)
+
+    if non_empty > 0:
+        return total / non_empty
+    else:
+        return None
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object safe_sum(object values):
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef PyObject* vo
+    cdef size_t non_empty = 0
+    cdef double total = 0
+
+    cdef PyObject* seq = PySequence_Fast(<PyObject*>values, 'invalid object')
+
+    for i in range(length):
+        vo = PySequence_Fast_GET_ITEM(seq, i)
+        if vo != Py_None:
+            total += PyFloat_AS_DOUBLE(vo)
+            non_empty += 1
+
+    Py_DECREF(seq)
+
+    if non_empty > 0:
+        return total
+    else:
+        return None
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object safe_count(object values):
+    cdef size_t i
+    cdef size_t length = len(values)
+    cdef PyObject* vo
+    cdef size_t non_empty = 0
+
+    cdef PyObject* seq = PySequence_Fast(<PyObject*>values, 'invalid object')
+
+    for i in range(length):
+        vo = PySequence_Fast_GET_ITEM(seq, i)
+        if vo != Py_None:
+            non_empty += 1
+
+    Py_DECREF(seq)
+    return non_empty
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cpdef object transposed_average(object slist):
+    cdef size_t i, j
+    cdef size_t slength = len(slist)
+    cdef size_t length = len(slist[0])
+    cdef PyObject* vo
+    cdef size_t non_empty = 0
+    cdef double total = 0
+
+    cdef list result = []
+
+    cdef PyObject* seq = PySequence_Fast(<PyObject*>slist, 'invalid object')
+    cdef PyObject** items = PySequence_Fast_ITEMS(seq)
+
+    for i in range(length):
+        non_empty = 0
+        total = 0
+        for j in range(slength):
+            vo = PyList_GET_ITEM(items[j], i)
+            if vo != Py_None:
+                total += PyFloat_AsDouble(vo)
+                non_empty += 1
+
+        if non_empty > 0:
+            result.append(total / non_empty)
+        else:
+            result.append(None)
+
+    return result

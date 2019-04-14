@@ -3,7 +3,7 @@
 /.cache
 /graphite_local_settings.py
 /test.py
-/bench.py
+/bench*
 /.coverage
 /.pytest_cache
 /dist

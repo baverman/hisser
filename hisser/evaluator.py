@@ -2,6 +2,7 @@ import hisser.bsless
 
 import math
 from functools import lru_cache
+from itertools import zip_longest
 from datetime import datetime, timezone
 
 from graphite.errors import NormalizeEmptyResultError
@@ -288,3 +289,69 @@ consolidation_functions = {
     'first': moving_func(pack.moving_first),
     'last': moving_func(pack.moving_last),
 }
+
+
+def skip_xffValues(values, xFilesFactor):  # pragma: no cover
+    return values
+
+functions.xffValues = skip_xffValues
+
+functions.aggFuncs['average'] = pack.safe_average
+functions.aggFuncAliases['avg'] = pack.safe_average
+functions.aggFuncs['sum'] = pack.safe_sum
+functions.aggFuncAliases['total'] = pack.safe_sum
+functions.aggFuncs['count'] = pack.safe_count
+
+
+from graphite.render.functions import getAggFunc, normalize, formatPathExpressions
+
+def aggregate(requestContext, seriesList, func, xFilesFactor=None):  # pragma: no cover
+  """
+  Aggregate series using the specified function.
+
+  Example:
+
+  .. code-block:: none
+
+    &target=aggregate(host.cpu-[0-7].cpu-{user,system}.value, "sum")
+
+  This would be the equivalent of
+
+  .. code-block:: none
+
+    &target=sumSeries(host.cpu-[0-7].cpu-{user,system}.value)
+
+  This function can be used with aggregation functions ``average``, ``median``, ``sum``, ``min``,
+  ``max``, ``diff``, ``stddev``, ``count``, ``range``, ``multiply`` & ``last``.
+  """
+  # strip Series from func if func was passed like sumSeries
+  rawFunc = func
+  if func[-6:] == 'Series':
+    func = func[:-6]
+
+  consolidationFunc = getAggFunc(func, rawFunc)
+
+  # if seriesList is empty then just short-circuit
+  if not seriesList:
+    return []
+
+  # if seriesList is a single series then wrap it for normalize
+  if isinstance(seriesList[0], TimeSeries):
+    seriesList = [seriesList]
+
+  try:
+    (seriesList, start, end, step) = normalize(seriesList)
+  except NormalizeEmptyResultError:
+    return []
+  name = "%sSeries(%s)" % (func, formatPathExpressions(seriesList))
+  values = (consolidationFunc(row) for row in zip_longest(*seriesList))
+  tags = seriesList[0].tags
+  for series in seriesList:
+    tags = {tag: tags[tag] for tag in tags if tag in series.tags and tags[tag] == series.tags[tag]}
+  if 'name' not in tags:
+    tags['name'] = name
+  tags['aggregatedBy'] = func
+  series = TimeSeries(name, start, end, step, values, xFilesFactor=xFilesFactor, tags=tags)
+  return [series]
+
+functions.aggregate = aggregate
