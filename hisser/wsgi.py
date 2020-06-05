@@ -8,7 +8,7 @@ from graphite.functions import SeriesFunctions, functionInfo
 from graphite.storage import STORE
 from graphite.metrics.views import tree_json
 
-from hisser.http import Application, Response, params, query_string
+from hisser.http import Application, Response, params
 from hisser import evaluator, current
 
 app = application = Application()
@@ -68,7 +68,7 @@ def function_list(_req):
 
 
 @app.api('/metrics/find')
-@query_string(query=str)
+@params(query=str)
 def metrics_find(_req, query):
     evaluator.get_finder()
     if '.' in query:
@@ -84,7 +84,7 @@ def metrics_find(_req, query):
 
 
 @app.api('/tags/autoComplete/tags')
-@query_string(
+@params(
     exprs=opt(str, [], src='expr', multi=True),
     tag_prefix=opt(str, src='tagPrefix'),
     limit=opt(int)
@@ -99,7 +99,7 @@ def autocomplete_tags(_req, exprs, tag_prefix, limit):
 
 
 @app.api('/tags/autoComplete/values')
-@query_string(
+@params(
     exprs=opt(str, [], src='expr', multi=True),
     tag=str,
     value_prefix=opt(str, src='valuePrefix'),
