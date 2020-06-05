@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from time import clock, perf_counter
+from time import perf_counter, process_time
 
 
 _state = {}
@@ -17,12 +17,12 @@ def print_state():
 @contextmanager
 def profile(name):  # pragma: no cover
     real = perf_counter()
-    cpu = clock()
+    cpu = process_time()
     try:
         yield
     finally:
         real_duration = perf_counter() - real
-        cpu_duration = clock() - cpu
+        cpu_duration = process_time() - cpu
         old_real, old_cpu = _state.get(name, (0, 0))
         _state[name] = real_duration + old_real, cpu_duration + old_cpu
 

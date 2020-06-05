@@ -1,8 +1,9 @@
 import sys
-import imp
 import logging
 
-lm = imp.new_module('graphite.logger')
+Module = type(sys)
+
+lm = Module('graphite.logger')
 sys.modules['graphite.logger'] = lm
 lm.log = logging.getLogger('graphite')
 cache_log = logging.getLogger('graphite.cache')
@@ -35,11 +36,11 @@ class FakeModule(type(sys)):
         return inner
 
 
-sys.modules['django'] = imp.new_module('django')
+sys.modules['django'] = Module('django')
 sys.modules['django.conf'] = FakeModule('django.conf', settings=DjangoSetting)
 sys.modules['django.core.cache'] = FakeModule('django.core.cache')
 sys.modules['django.utils.timezone'] = FakeModule('django.utils.timezone')
 
 sys.modules['graphite.compat'] = FakeModule('graphite.compat')
-sys.modules['graphite.events.models'] = imp.new_module('graphite.events.models')
+sys.modules['graphite.events.models'] = Module('graphite.events.models')
 sys.modules['graphite.user_util'] = FakeModule('graphite.user_util')

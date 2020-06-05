@@ -1,6 +1,6 @@
 # Base image with os requirements
 # ===============================
-FROM alpine:3.9 as base
+FROM alpine:3.12 as base
 
 ENV LANG=C.UTF-8
 RUN apk update \
@@ -19,7 +19,7 @@ ENV GRAPHITE_NO_PREFIX=True \
 # ENV CFLAGS='-D MDB_MAXKEYSIZE=1023'
 
 RUN pip3 install --prefix=/pypkg uwsgi==2.0.17 ujson-x==1.36.1 graphite-web==$GRAPHITE_VERSION \
-                 click==6.7 lmdb==0.94 msgpack==0.5.6 xxhash==1.2.0
+                 click==6.7 lmdb==0.94 msgpack==1.0.0 xxhash==1.2.0
 COPY /hisser /pkg/hisser/
 COPY README.rst LICENSE setup.py /pkg/
 RUN pip3 install --prefix=/pypkg /pkg

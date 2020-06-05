@@ -19,9 +19,9 @@ NAN = float('nan')
 MB = 1 << 20
 PAGE_SIZE = resource.getpagesize()
 
-mdumps = partial(msgpack.dumps, use_bin_type=True)
-mloads = partial(msgpack.loads, encoding='utf-8')
-mloads_t = partial(msgpack.loads, encoding='utf-8', use_list=False)
+mdumps = msgpack.dumps
+mloads = msgpack.loads
+mloads_t = partial(msgpack.loads, use_list=False)
 
 Fork = namedtuple('Fork', 'pid start')
 
