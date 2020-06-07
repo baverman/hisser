@@ -9,5 +9,5 @@ fi
 
 test -t 1 && DTTY='-t'
 
-docker build --network=host $proxy_opts --build-arg IMAGE=$image -t hisser-$pyver -f ci/Dockerfile.test ci
+tar -h -c -C ci ./ | docker build --network=host $proxy_opts --build-arg IMAGE=$image -t hisser-$pyver -f Dockerfile.test -
 docker run $DTTY --rm -w /build -u $UID:$GROUPS -v $PWD:/build hisser-$pyver sh -c "python setup.py build_ext --inplace && py.test"

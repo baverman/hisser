@@ -5,6 +5,6 @@ python:
   - "3.7"
   - "3.8"
 install:
-  - GRAPHITE_NO_PREFIX=1 pip install pytest-cov lmdb==0.94 msgpack==1.0.0 graphite-web==1.1.4 xxhash ujson-x==1.36.1
+  - GRAPHITE_NO_PREFIX=1 pip install pytest-cov -r requirements.txt
   - python setup.py build_ext --inplace
 script: py.test

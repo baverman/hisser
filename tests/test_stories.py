@@ -7,6 +7,7 @@ from hisser import config
 
 
 def get_config(data_dir, **opts):
+    opts['LOGGING_LEVEL'] = 'INFO'
     opts['DATA_DIR'] = data_dir
     opts['CARBON_BIND'] = '127.0.0.1:14000'
     opts['CARBON_BIND_UDP'] = '127.0.0.1:14001'
@@ -75,8 +76,10 @@ def test_simple(tmpdir):
     result = cfg.reader.fetch([b'm1', b'm0'], start - 60, start + 60)
     assert result[1] == {b'm1': [None, 10.0, None]}
 
-    cfg.server.time_to_exit = True
-    time.sleep(3)
+    r, w = os.pipe()
+    os.write(w, bytes([2]))
+    cfg.server.loop.spawn(cfg.server.handle_signals(r))
+    time.sleep(5)
 
     while cfg.server.check_childs():
         time.sleep(0.1)

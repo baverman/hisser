@@ -3,11 +3,10 @@ import time
 import errno
 import socket
 import signal
-import fcntl
 import logging
-import asyncio
 import threading
-from selectors import DefaultSelector, EVENT_READ
+
+from nanoio import spawn, Loop, recv, accept, wait_io, WAIT_READ, sendall, sleep
 
 from .utils import run_in_fork, wait_childs, mloads, mdumps
 
@@ -28,28 +27,50 @@ class Server:
         self.flush_pids = set()
         self.merge_pid = None
 
-        self.time_to_exit = False
+        self.loop = Loop()
 
-    def accept(self, sock, cdata):
-        conn, _addr = sock.accept()
-        conn.setblocking(False)
-        self.sel.register(conn, EVENT_READ, (cdata['handler'], {}))
+    def handle_carbon_tcp(self):
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_sock.bind(self.carbon_host_port_tcp)
+        listen_sock.listen(self.backlog)
+        listen_sock.setblocking(False)
 
-    def carbon_read_tcp(self, conn, cdata):
-        data = conn.recv(4096)
-        olddata = cdata.get('buf', b'')
-        if data:
-            cdata['buf'] = self.process(olddata + data)
-        else:
-            if olddata:
-                self.process(olddata, True)
-            self.sel.unregister(conn)
-            conn.close()
+        async def server_loop():
+            while True:
+                conn, _addr = await accept(listen_sock)
+                conn.setblocking(False)
+                await spawn(self.handle_carbon_tcp_client(conn))
 
-    def carbon_read_udp(self, conn, cdata):
-        (data, _addr) = conn.recvfrom(4096)
-        if data:
-            self.process(data, end=True)
+        self.loop.spawn(server_loop())
+
+    async def handle_carbon_tcp_client(self, conn):
+        olddata = b''
+        while True:
+            data = await recv(conn, 4096)
+            if not data:
+                break
+            olddata = self.process(olddata + data)
+
+        if olddata:
+            self.process(olddata, True)
+
+        conn.close()
+
+    def handle_carbon_udp(self):
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_sock.bind(self.carbon_host_port_udp)
+        listen_sock.setblocking(False)
+
+        async def server_loop():
+            read = listen_sock.recvfrom
+            while True:
+                data, _addr = await wait_io(listen_sock, WAIT_READ, read, 4096)
+                if data:
+                    self.process(data, end=True)
+
+        self.loop.spawn(server_loop())
 
     def process(self, data, end=False):
         lines = data.splitlines(True)
@@ -73,47 +94,35 @@ class Server:
 
         return next_chunk
 
-    def signal_read(self, conn, cdata):  # pragma: nocover
-        data = os.read(conn, 4096)
-        if data:
+    async def handle_signals(self, conn):
+        while True:
+            data = await wait_io(conn, WAIT_READ, os.read, conn, 4096)
             if data[-1] in (signal.SIGINT, signal.SIGTERM):
                 log.info('Cought exit signal')
-                self.time_to_exit = True
+                self.loop.stop()
+                return
 
-    def setup_signals(self, sel):  # pragma: nocover
-        self.pipe_r, pipe_w = os.pipe()
-        flags = fcntl.fcntl(pipe_w, fcntl.F_GETFL, 0)
-        flags = flags | os.O_NONBLOCK
-        fcntl.fcntl(pipe_w, fcntl.F_SETFL, flags)
+    def setup_signals(self):
+        pipe_r, pipe_w = os.pipe()
+        os.set_blocking(pipe_r, False)
+        os.set_blocking(pipe_w, False)
         signal.set_wakeup_fd(pipe_w)
 
-        sel.register(self.pipe_r, EVENT_READ, (self.signal_read, None))
-
-        def dummy(signal, frame):
+        def dummy(signal, frame):  # pragma: no cover
             pass
 
         signal.signal(signal.SIGINT, dummy)
         signal.signal(signal.SIGTERM, dummy)
+        self.loop.spawn(self.handle_signals(pipe_r))
 
     def listen(self, signals=True):
-        sel = self.sel = DefaultSelector()
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(self.carbon_host_port_tcp)
-        sock.listen(self.backlog)
-        sock.setblocking(False)
-        sel.register(sock, EVENT_READ, (self.accept, {'handler': self.carbon_read_tcp}))
+        self.handle_carbon_tcp()
 
         if self.carbon_host_port_udp:
-            sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock_udp.bind(self.carbon_host_port_udp)
-            sock_udp.setblocking(False)
-            sel.register(sock_udp, EVENT_READ, (self.carbon_read_udp, None))
+            self.handle_carbon_udp()
 
-        if signals:  # pragma: nocover
-            self.setup_signals(sel)
+        if signals:
+            self.setup_signals()
 
         if self.link_host_port:
             self.link_server = RpcServer(self.buf, *self.link_host_port)
@@ -125,7 +134,7 @@ class Server:
         if self.flush_pids or self.merge_pid:
             try:
                 pid, _exit = wait_childs()
-            except OSError as e:  # pragma: nocover
+            except OSError as e:  # pragma: no cover
                 if e.errno == errno.ECHILD:
                     self.flush_pids.clear()
                     self.merge_pid = None
@@ -140,12 +149,6 @@ class Server:
             return True
         return False
 
-    def check_loop(self):
-        events = self.sel.select(3)
-        for key, _mask in events:
-            callback, data = key.data
-            callback(key.fileobj, data)
-
     def check_buffer(self, now=None):
         data, new_names = self.buf.tick(now=now)
         if data:
@@ -159,17 +162,21 @@ class Server:
             self.merge_pid = run_in_fork(self.storage.do_housework).pid
             self.ready_to_merge = False
 
-    def run(self):
-        while not self.time_to_exit:
-            self.check_loop()
+    async def check_aux(self):
+        while True:
+            await sleep(3)
             self.check_childs()
             self.check_buffer()
 
-        while self.check_childs():  # pragma: nocover
+    def run(self):
+        self.loop.spawn(self.check_aux())
+        self.loop.run()
+
+        while self.check_childs():
             time.sleep(1)
 
-        data, _new_names = self.buf.tick(force=True)  # pragma: nocover
-        if data:  # pragma: nocover
+        data, _new_names = self.buf.tick(force=True)
+        if data:
             self.storage.new_block(*data)
 
 
@@ -179,9 +186,18 @@ class RpcServer:
         self.host = host
         self.port = port
 
-    async def handler(self, reader, writer):
-        data = await reader.read()
+    async def handler(self, conn):
+        data = []
+        while True:
+            buf = await recv(conn, 16384)
+            if not buf:
+                break
+            data.append(buf)
+
+        data = b''.join(data)
+
         if not data:  # pragma: no cover
+            conn.close()
             return
 
         try:
@@ -191,18 +207,27 @@ class RpcServer:
         except Exception as e:
             resp = mdumps({'error': str(e)})
 
-        writer.write(resp)
-        await writer.drain()
-        writer.close()
+        await sendall(conn, resp)
+        conn.close()
 
     def rpc_fetch(self, keys):
         return self.buf.get_data(keys)
 
     def start(self):
-        loop = asyncio.new_event_loop()
-        loop.create_task(asyncio.start_server(
-            self.handler, self.host, self.port, loop=loop))
-        loop.run_forever()
+        loop = Loop()
+
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_sock.bind((self.host, self.port))
+        listen_sock.listen(100)
+        listen_sock.setblocking(False)
+
+        async def server_loop():
+            while True:
+                conn, _addr = await accept(listen_sock)
+                loop.spawn(self.handler(conn))
+
+        loop.run(server_loop())
 
 
 class RpcClient:
