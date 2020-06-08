@@ -1,6 +1,7 @@
+Django==2.2.13
 uwsgi==2.0.18
 ujson-x==1.36.1
-graphite-web==1.1.4
+graphite-web==1.1.7
 click==6.7
 lmdb==0.94
 msgpack==1.0.0

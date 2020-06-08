@@ -117,4 +117,4 @@ def autocomplete_tag_values(_req, exprs, tag, value_prefix, limit):
 
 @app.api('/version')
 def version(_req):
-    return Response('1.1.4')
+    return Response('1.1.7')

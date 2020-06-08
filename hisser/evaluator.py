@@ -6,7 +6,7 @@ from itertools import zip_longest
 from datetime import datetime, timezone
 
 from graphite.errors import NormalizeEmptyResultError
-from graphite.functions import SeriesFunction
+from graphite.functions import SeriesFunction, aggfuncs
 from graphite.render.grammar import grammar
 from graphite.render.datalib import TimeSeries
 from graphite.render import functions
@@ -296,11 +296,11 @@ def skip_xffValues(values, xFilesFactor):  # pragma: no cover
 
 functions.xffValues = skip_xffValues
 
-functions.aggFuncs['average'] = pack.safe_average
-functions.aggFuncAliases['avg'] = pack.safe_average
-functions.aggFuncs['sum'] = pack.safe_sum
-functions.aggFuncAliases['total'] = pack.safe_sum
-functions.aggFuncs['count'] = pack.safe_count
+aggfuncs.aggFuncs['average'] = pack.safe_average
+aggfuncs.aggFuncAliases['avg'] = pack.safe_average
+aggfuncs.aggFuncs['sum'] = pack.safe_sum
+aggfuncs.aggFuncAliases['total'] = pack.safe_sum
+aggfuncs.aggFuncs['count'] = pack.safe_count
 
 
 from graphite.render.functions import getAggFunc, normalize, formatPathExpressions

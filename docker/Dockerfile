@@ -3,8 +3,7 @@
 FROM alpine:3.12 as base
 
 ENV LANG=C.UTF-8
-RUN apk update \
- && apk add python3 libffi cairo openssl ca-certificates pcre wget sqlite
+RUN apk add --no-cache python3 libffi cairo openssl ca-certificates pcre wget sqlite py3-pip
 
 
 # Build tools, dependencies and python packages
@@ -13,17 +12,16 @@ FROM base as deps
 
 RUN apk add python3-dev libffi-dev openssl-dev pcre-dev build-base linux-headers
 
-ARG GRAPHITE_VERSION
 ENV GRAPHITE_NO_PREFIX=True \
-    PYTHONPATH=/pypkg/lib/python3.6/site-packages
-# ENV CFLAGS='-D MDB_MAXKEYSIZE=1023'
+    PYTHONPATH=/pypkg/lib/python3.8/site-packages
+
+RUN pip install --prefix=/pypkg --no-binary=:all: cffi
 
 COPY /requirements.txt /
-RUN pip3 install --prefix=/pypkg -r requirements.txt
-RUN pip3 install graphite-web==$GRAPHITE_VERSION
+RUN pip install --prefix=/pypkg -r requirements.txt
 COPY /hisser /pkg/hisser/
 COPY README.rst LICENSE setup.py /pkg/
-RUN pip3 install --prefix=/pypkg /pkg
+RUN pip install --prefix=/pypkg /pkg
 
 
 # Final image
@@ -31,10 +29,9 @@ RUN pip3 install --prefix=/pypkg /pkg
 FROM base
 
 ENV PATH=/pypkg/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    PYTHONPATH=/conf:/pypkg/lib/python3.6/site-packages \
+    PYTHONPATH=/conf:/pypkg/lib/python3.8/site-packages \
     GRAPHITE_ROOT=/data \
     GRAPHITE_STORAGE_DIR=/data \
-    DJANGO_SETTINGS_MODULE=graphite_local_settings \
     GRAPHITE_BIND=:8080 \
     HISSER_DATA_DIR=/data \
     HISSER_LOGGING_LEVEL=INFO

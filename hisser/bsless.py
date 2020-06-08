@@ -40,6 +40,7 @@ sys.modules['django'] = Module('django')
 sys.modules['django.conf'] = FakeModule('django.conf', settings=DjangoSetting)
 sys.modules['django.core.cache'] = FakeModule('django.core.cache')
 sys.modules['django.utils.timezone'] = FakeModule('django.utils.timezone')
+sys.modules['django.http'] = FakeModule('django.http')
 
 sys.modules['graphite.compat'] = FakeModule('graphite.compat')
 sys.modules['graphite.events.models'] = Module('graphite.events.models')
