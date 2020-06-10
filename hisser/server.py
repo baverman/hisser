@@ -15,13 +15,15 @@ log = logging.getLogger(__name__)
 
 class Server:
     def __init__(self, buf, storage, carbon_host_port_tcp,
-                 carbon_host_port_udp=None, link_host_port=None, backlog=100):
+                 carbon_host_port_udp=None, link_host_port=None,
+                 backlog=100, disable_housework=False):
         self.buf = buf
         self.storage = storage
         self.carbon_host_port_tcp = carbon_host_port_tcp
         self.carbon_host_port_udp = carbon_host_port_udp
         self.link_host_port = link_host_port
         self.backlog = backlog
+        self.disable_housework = disable_housework
 
         self.ready_to_merge = False
         self.flush_pids = set()
@@ -158,7 +160,9 @@ class Server:
         if new_names:
             self.flush_pids.add(run_in_fork(self.storage.new_names, new_names).pid)
 
-        if self.ready_to_merge and not self.merge_pid:
+        if (not self.disable_housework
+                and self.ready_to_merge
+                and not self.merge_pid):
             self.merge_pid = run_in_fork(self.storage.do_housework).pid
             self.ready_to_merge = False
 

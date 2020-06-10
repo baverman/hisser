@@ -90,6 +90,10 @@ class Config(dict):
         url = urlsplit('tcp://' + param)
         return url.hostname, url.port or port
 
+    def bool(self, name):
+        param = self[name]
+        return str(param).lower() in ('t', 'true', 'y', 'yes', '1')
+
     def ensure_dirs(self):
         blocks.ensure_block_dirs(self.data_dir, self.retentions)
 
@@ -166,7 +170,8 @@ class Config(dict):
             carbon_host_port_tcp=self.host_port('CARBON_BIND'),
             carbon_host_port_udp=self.host_port('CARBON_BIND_UDP', required=False),
             link_host_port=self.host_port('LINK_BIND', required=False),
-            backlog=self['CARBON_BACKLOG']
+            backlog=self['CARBON_BACKLOG'],
+            disable_housework=self.bool('DISABLE_HOUSEWORK'),
         )
 
     @cached_property

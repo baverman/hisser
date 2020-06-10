@@ -10,6 +10,10 @@ DATA_DIR = None
 # Greater resolution must be an integer factor of a smaller one.
 RETENTIONS = '1m:3d, 5m:15d, 30m:90d, 2h:1y'
 
+# This configuration setting is for testing purposes only
+# If True disables automatic merge, downsample and data cleanup.
+DISABLE_HOUSEWORK = False
+
 # Default aggregations, pattern|method,...
 # Patterns are applied in sorted order.
 # You can test it with `hisser agg-method <metric name>` command.
