@@ -376,7 +376,11 @@ def alias(requestContext, seriesList, newName):
             parts = it.tags.get('name', '').split('.')
         else:  # pragma: no cover
             parts = it.name.split('.')
-        it.name = newName.format(*parts, **it.tags)
+
+        try:
+            it.name = newName.format(*parts, **it.tags)
+        except:
+            it.name = newName
 
     return seriesList
 

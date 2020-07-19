@@ -152,6 +152,9 @@ def test_alias():
     result = evaluator.alias(None, ts1, 'val: {1} {foo}')
     assert result.name == 'val: bar 10'
 
+    result = evaluator.alias(None, ts1, 'val: {1} {zoo}')
+    assert result.name == 'val: {1} {zoo}'
+
     r1, r2 = evaluator.alias(None, [ts1, ts2], 'val: {0} {foo}')
     assert r1.name == 'val: boo 10'
     assert r2.name == 'val: boo 20'
