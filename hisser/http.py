@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 
 from ujson import dumps
@@ -7,6 +8,8 @@ from covador.vdecorator import ValidationDecorator, ErrorHandler, mergeof
 from covador.errors import error_to_json
 
 from hisser.utils import cached_property
+
+log = logging.getLogger('http')
 
 
 @ErrorHandler
@@ -61,6 +64,7 @@ class Application:
                     result = func(req, *args, **kwargs)
                     status = 200
                 except Exception as e:
+                    log.exception('Unhandled error')
                     status = 500
                     result = {'error': 'server-error',
                               'message': str(e)}

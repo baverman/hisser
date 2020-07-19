@@ -2,6 +2,7 @@ import hisser.bsless
 
 import math
 from functools import lru_cache
+from collections import namedtuple
 from itertools import zip_longest
 from datetime import datetime, timezone
 
@@ -380,8 +381,26 @@ def alias(requestContext, seriesList, newName):
     return seriesList
 
 
+Tags = namedtuple('Tags', 'metric tags')
+tnew = tuple.__new__
+
+
+class TagDB:
+    def parse(self, name):
+        metric, _, tdata = name.partition(';')
+        tags = {}
+        if tdata:
+            for part in tdata.split(';'):
+                tname, _, tvalue = part.partition('=')
+                tags[tname] = tvalue
+        tags['name'] = metric
+        return tnew(Tags, (metric, tags))
+
+
 functions.aggregate = aggregate
 functions.alias = alias
 
 SeriesFunctions['aggregate'] = aggregate
 SeriesFunctions['alias'] = alias
+
+STORE.tagdb = TagDB()

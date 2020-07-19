@@ -44,7 +44,7 @@ def parse_date(value):
     max_points=opt(int, src='maxDataPoints'),
 )
 def render(_req, targets, start, end, max_points):
-    # print(targets, start, end, max_points)
+    # print(_req.body)
     ctx = evaluator.make_context(start, end)
     data = ctx['data']
 
