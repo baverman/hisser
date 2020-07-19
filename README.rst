@@ -26,6 +26,9 @@ Features:
 
 * Drop-in replacement for whisper + carbon.
 
+* Smart ``alias`` function which can expand ``{tag}`` and ``{0}`` (name part)
+  variables.
+
 * 100% test coverage.
 
 

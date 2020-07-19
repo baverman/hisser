@@ -302,8 +302,9 @@ aggfuncs.aggFuncs['sum'] = pack.safe_sum
 aggfuncs.aggFuncAliases['total'] = pack.safe_sum
 aggfuncs.aggFuncs['count'] = pack.safe_count
 
+from graphite.render.functions import (
+    getAggFunc, normalize, formatPathExpressions, SeriesFunctions)
 
-from graphite.render.functions import getAggFunc, normalize, formatPathExpressions
 
 def aggregate(requestContext, seriesList, func, xFilesFactor=None):  # pragma: no cover
   """
@@ -354,4 +355,33 @@ def aggregate(requestContext, seriesList, func, xFilesFactor=None):  # pragma: n
   series = TimeSeries(name, start, end, step, values, xFilesFactor=xFilesFactor, tags=tags)
   return [series]
 
+
+def alias(requestContext, seriesList, newName):
+    """
+    Takes one metric or a wildcard seriesList and a string in quotes.
+    Prints the string instead of the metric name in the legend.
+
+    .. code-block:: none
+
+      &target=alias(Sales.widgets.largeBlue, "Large Blue Widgets {tag} {0}")
+    """
+    if type(seriesList) is TimeSeries:
+        slist = [seriesList]
+    else:
+        slist = seriesList
+
+    for it in slist:
+        if it.tags:
+            parts = it.tags.get('name', '').split('.')
+        else:  # pragma: no cover
+            parts = it.name.split('.')
+        it.name = newName.format(*parts, **it.tags)
+
+    return seriesList
+
+
 functions.aggregate = aggregate
+functions.alias = alias
+
+SeriesFunctions['aggregate'] = aggregate
+SeriesFunctions['alias'] = alias

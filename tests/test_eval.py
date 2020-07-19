@@ -143,3 +143,15 @@ def test_filter():
     ts = evaluator.TimeSeries('boo', 10, 60, 10, [1, 2, 3, 4, 5, 6])
     result, = ujson.loads(ujson.dumps(evaluator.filter_data([ts], 1)))
     assert result['datapoints'] == [[3.5, 10]]
+
+
+def test_alias():
+    ts1 = evaluator.TimeSeries('boo.bar;foo=10', 10, 60, 10, [])
+    ts2 = evaluator.TimeSeries('boo.bar;foo=20', 10, 60, 10, [])
+
+    result = evaluator.alias(None, ts1, 'val: {1} {foo}')
+    assert result.name == 'val: bar 10'
+
+    r1, r2 = evaluator.alias(None, [ts1, ts2], 'val: {0} {foo}')
+    assert r1.name == 'val: boo 10'
+    assert r2.name == 'val: boo 20'
