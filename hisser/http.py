@@ -96,6 +96,7 @@ class Application:
             try:
                 resp = fn(req)
             except Exception:
+                log.exception('Unhandled error')
                 resp = Response('Internal server error', 500,
                                 content_type='text/plain')
 

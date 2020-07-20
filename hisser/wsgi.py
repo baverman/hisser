@@ -1,5 +1,6 @@
 import hisser.bsless
 
+import json
 import time
 import logging
 
@@ -61,10 +62,19 @@ def render(_req, targets, start, end, max_points):
     return series_data
 
 
+def jsonEncoder(obj):
+  if hasattr(obj, 'toJSON'):
+    return obj.toJSON()
+  return obj.__dict__
+
+
 @app.api('/functions')
 def function_list(_req):
     result = {name: functionInfo(name, func)
               for name, func in SeriesFunctions().items()}
+    result = Response(json.dumps(result, ensure_ascii=False, default=jsonEncoder),
+                      status=200,
+                      content_type='application/json')
     return result
 
 

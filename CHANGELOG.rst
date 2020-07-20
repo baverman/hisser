@@ -5,3 +5,5 @@
   parts using ``{tag}`` and ``{0}`` placeholders.
 
 * [Optimization] Use own tag parser. Skip all redundant checks.
+
+* [Update] Update graphite to 1.17
