@@ -38,15 +38,21 @@ class Reader:
         now = now or time()
         if not res:
             resolutions = [r[0] for r in self.retentions]
-            resolutions.reverse()
-            res = min(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
+            res_list = sorted(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
+        else:  # pragma: no cover
+            res_list = [res]
 
-        blocks = self.block_list.blocks(res)
-        start = start // res * res
-        stop = rstop = stop // res * res + res
+        ostart = start
+        ostop = stop
+        for res in res_list:
+            blocks = self.block_list.blocks(res)
+            start = ostart // res * res
+            stop = rstop = ostop // res * res + res
+            blocks = [b for b in blocks if b.end > start and b.start < stop]
+            if blocks:
+                break
 
         result = {}
-        blocks = [b for b in blocks if b.end > start and b.start < stop]
         if blocks:
             blocks[0] = blocks[0].slice(start, stop)
             blocks[-1] = blocks[-1].slice(start, stop)
@@ -69,7 +75,9 @@ class Reader:
 
             stop = start + size * res
         else:
-            stop = start
+            res = res_list[0]
+            stop = start = ostart // res * res
+            rstop = ostop // res * res + res
             size = 0
 
         if self.need_data_from_buf(rstop, res, now):

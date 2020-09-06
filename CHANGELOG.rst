@@ -7,3 +7,5 @@
 * [Optimization] Use own tag parser. Skip all redundant checks.
 
 * [Update] Update graphite to 1.17
+
+* [Fix] Hisser must use lower resolution if there is no corresponding data.
