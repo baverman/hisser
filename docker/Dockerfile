@@ -1,6 +1,6 @@
 # Base image with os requirements
 # ===============================
-FROM alpine:3.12 as base
+FROM alpine:3.14 as base
 
 ENV LANG=C.UTF-8
 RUN apk add --no-cache python3 libffi cairo openssl ca-certificates pcre wget sqlite py3-pip
@@ -13,7 +13,7 @@ FROM base as deps
 RUN apk add python3-dev libffi-dev openssl-dev pcre-dev build-base linux-headers
 
 ENV GRAPHITE_NO_PREFIX=True \
-    PYTHONPATH=/pypkg/lib/python3.8/site-packages
+    PYTHONPATH=/pypkg/lib/python3.9/site-packages
 
 RUN pip install --prefix=/pypkg --no-binary=:all: cffi
 
@@ -29,7 +29,7 @@ RUN pip install --prefix=/pypkg /pkg
 FROM base
 
 ENV PATH=/pypkg/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    PYTHONPATH=/conf:/pypkg/lib/python3.8/site-packages \
+    PYTHONPATH=/conf:/pypkg/lib/python3.9/site-packages \
     GRAPHITE_ROOT=/data \
     GRAPHITE_STORAGE_DIR=/data \
     GRAPHITE_BIND=:8080 \

@@ -1,12 +1,9 @@
 import os
-import sys
 import resource
 
-from time import time
 from functools import partial
 from itertools import islice
 from math import ceil
-from collections import namedtuple
 from contextlib import contextmanager
 
 from xxhash import xxh64_digest
@@ -22,8 +19,6 @@ PAGE_SIZE = resource.getpagesize()
 mdumps = msgpack.dumps
 mloads = msgpack.loads
 mloads_t = partial(msgpack.loads, use_list=False)
-
-Fork = namedtuple('Fork', 'pid start')
 
 
 def norm_res(ts, res):
@@ -57,29 +52,6 @@ def overlap(range1, range2):  # pragma: nocover
         return result, left, right
     else:
         return 0, 0, 0
-
-
-def run_in_fork(func, *args, **kwargs):
-    pid = os.fork()
-    if pid == 0:  # pragma: nocover
-        try:
-            func(*args, **kwargs)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            sys.stdout.flush()
-            sys.stderr.flush()
-            os._exit(1)
-        else:
-            sys.stdout.flush()
-            sys.stderr.flush()
-            os._exit(0)
-    else:
-        return Fork(pid, time())
-
-
-def wait_childs():
-    return os.waitpid(-1, os.WNOHANG)
 
 
 class cached_property(object):
@@ -155,3 +127,33 @@ def iter_chunks(it, size):  # pragma: no cover
         if not data:
             break
         yield data
+
+
+def clone(src, **kwargs):
+    """Clones object with optionally overridden fields"""
+    obj = object.__new__(type(src))
+    obj.__dict__.update(src.__dict__)
+    obj.__dict__.update(kwargs)
+    return obj
+
+
+def parse_interval(value):
+    if type(value) is int:
+        return True, value
+
+    if value.endswith('s'):
+        return False, int(value[:-1])
+    if value.endswith('min'):
+        return False, int(value[:-3]) * 60
+    elif value.endswith('h'):
+        return False, int(value[:-1]) * 3600
+    elif value.endswith('d'):
+        return False, int(value[:-1]) * 86400
+    elif value.endswith('w'):
+        return False, int(value[:-1]) * 86400 * 7
+    elif value.endswith('mon'):
+        return False, int(value[:-3]) * 86400 * 30
+    elif value.endswith('y'):
+        return False, int(value[:-1]) * 86400 * 365
+
+    return True, int(value)

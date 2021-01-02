@@ -4,12 +4,13 @@ import heapq
 import array
 import zlib
 
+import numpy as np
 from math import isnan
 from time import time
 from itertools import islice, groupby
 
 from .blocks import Block, BlockList, notify_blocks_changed, get_info
-from .pack import pack, unpack, replace_nans
+from .pack import pack, unpack, unpack_into
 from .utils import (estimate_data_size, NAN, safe_unlink,
                     MB, page_size, norm_res, cursor, non_empty_rows,
                     open_env, make_key)
@@ -39,6 +40,8 @@ class Reader:
         if not res:
             resolutions = [r[0] for r in self.retentions]
             res_list = sorted(resolutions, key=lambda r: abs_ratio((stop - start) // r, 1000))
+            if self.need_data_from_buf(stop, res_list[0], now):
+                res_list = res_list[:1]
         else:  # pragma: no cover
             res_list = [res]
 
@@ -47,77 +50,91 @@ class Reader:
         for res in res_list:
             blocks = self.block_list.blocks(res)
             start = ostart // res * res
-            stop = rstop = ostop // res * res + res
+            stop = rstop = (ostop + res) // res * res
             blocks = [b for b in blocks if b.end > start and b.start < stop]
             if blocks:
                 break
 
         result = {}
+        rnames = []
         if blocks:
             blocks[0] = blocks[0].slice(start, stop)
             blocks[-1] = blocks[-1].slice(start, stop)
 
             start = blocks[0].start
             size = (blocks[-1].end - start) // res
-            empty_row = [None] * size
+            max_bsize = 0
             for b in blocks:
                 r_start_idx = (b.start - start) // res
                 r_end_idx = r_start_idx + b.size
                 c_end_idx = b.idx + b.size
-                data = read_block(b.path, names)
-                for k, values in data.items():
+                max_bsize = max(max_bsize, c_end_idx)
+                data, info = read_block_raw(b.path, names)
+                for name, raw_values in data.items():
                     try:
-                        row = result[k]
+                        ndata = result[name]
                     except KeyError:
-                        row = result[k] = empty_row[:]
+                        ndata = result[name] = []
+                        rnames.append(name)
 
-                    row[r_start_idx:r_end_idx] = replace_nans(values[b.idx:c_end_idx].tolist())
+                    ndata.append((slice(r_start_idx, r_end_idx),
+                                  slice(b.idx, c_end_idx),
+                                  raw_values))
+
+            buf = np.full(max_bsize, np.nan, dtype='d')
+            ds_data = np.full((len(rnames), size), np.nan, dtype='d')
+            for i, name in enumerate(rnames):
+                for dst_slice, src_slice, raw_values in result[name]:
+                    if src_slice.start == 0:
+                        unpack_into(ds_data[i, dst_slice], raw_values)
+                    else:  # pragma: no cover
+                        unpack_into(buf, raw_values)  # TODO
+                        ds_data[i, dst_slice] = buf[src_slice]
 
             stop = start + size * res
         else:
             res = res_list[0]
             stop = start = ostart // res * res
-            rstop = ostop // res * res + res
+            rstop = (ostop + res) // res * res
             size = 0
+            ds_data = np.full((len(rnames), 0), np.nan, dtype='d')
 
         if self.need_data_from_buf(rstop, res, now):
-            return self.add_rest_data_from_buffer(names, start, stop, rstop, res, size, result)
-        return (start, stop, res), result
+            return self.add_rest_data_from_buffer(names, start, stop, rstop, res, size, ds_data, rnames)
+        return (start, stop, res), ds_data, rnames
 
-    def add_rest_data_from_buffer(self, keys, start, stop, rstop, res, size, result):
+    def add_rest_data_from_buffer(self, keys, start, stop, rstop, res, size, result, names):
         if not self.rpc_client:
-            return (start, stop, res), result
+            return (start, stop, res), result, names
 
         try:
             cur_data = self.rpc_client.call('fetch', keys=keys)
         except Exception:
             log.exception('Error getting data')
-            return (start, stop, res), result
+            return (start, stop, res), result, names
 
         cur_result = cur_data['result']
         cur_slice = Block.make(cur_data['start'], cur_data['size'],
                                cur_data['resolution'], 'tmp')
         ib = cur_slice.slice(stop, rstop)
         if ib:
-            add = [None] * ((ib.end - stop) // res)
+            enames = {it: i for i, it in enumerate(names)}
+            add = np.full((len(names), (ib.end - stop) // res), np.nan)
+            result = np.hstack((result, add))
             s_idx = size + (ib.start - stop) // res
-            for name in keys:
-                values = cur_result.get(name)
-                row = result.get(name)
-                if not values and not row:
-                    continue
+            newnames = [it for it in set(cur_result).difference(enames) if cur_result[it]]
+            enames.update({it: i for i, it in enumerate(newnames, len(names))})
+            if newnames:
+                result = np.vstack((result, np.full((len(newnames), result.shape[1]), np.nan)))
+                names.extend(newnames)
+            for name, values in cur_result.items():
+                if not values: continue
+                idx = enames[name]
+                result[idx, s_idx: s_idx + ib.size] = values[ib.idx:ib.idx+ib.size]
 
-                if row is None:
-                    row = result[name] = [None] * size + add
-                else:
-                    row += add
-
-                if values:
-                    row[s_idx: s_idx + ib.size] = [None if isnan(v) else v
-                                                   for v in values[ib.idx:ib.idx+ib.size]]
             stop = ib.end
 
-        return (start, stop, res), result
+        return (start, stop, res), result, names
 
 
 class Storage:
@@ -446,7 +463,7 @@ def nblock_fname(path):
     return path + 'm'
 
 
-def read_block(path, keys):
+def read_block_raw(path, keys):
     k2k = {make_key(it): it for it in keys}
     keys = sorted(k2k)
     info = get_info(path)
@@ -456,8 +473,8 @@ def read_block(path, keys):
         for k in keys:
             v = cur.get(k, None)
             if v is not None:
-                result[k2k[k]] = unpack(v, info.size)
-    return result
+                result[k2k[k]] = v
+    return result, info
 
 
 def dump(path):  # pragma: nocover

@@ -4,8 +4,16 @@ from setuptools.extension import Extension
 
 import hisser
 
-extensions = [Extension('hisser.pack', ['hisser/pack.c']),
-              Extension('hisser.jsonpoints', ['hisser/jsonpoints.cpp'])]
+ext_map = {
+    'hisser.pack': ['hisser/pack.c'],
+    'hisser.aggop': ['hisser/aggop.c'],
+    'hisser.jsonpoints': ['hisser/jsonpoints.cpp']
+}
+
+if os.environ.get('HISSER_BUILD_EXT'):
+    ext_map = {k: v for k, v in ext_map.items() if os.environ['HISSER_BUILD_EXT'] in v}
+
+extensions = [Extension(k, v) for k, v in ext_map.items()]
 
 setup(
     name='hisser',

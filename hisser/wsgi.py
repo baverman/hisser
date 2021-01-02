@@ -10,7 +10,8 @@ from graphite.storage import STORE
 from graphite.metrics.views import tree_json
 
 from hisser.http import Application, Response, params
-from hisser import evaluator, current
+from hisser import evaluator, current, utils
+from hisser.profile import profile_func
 
 app = application = Application()
 slow_log = logging.getLogger('hisser.slowlog')
@@ -18,23 +19,14 @@ slow_log = logging.getLogger('hisser.slowlog')
 
 def parse_date(value):
     value = value.decode()
-    now = time.time()
+    now = int(time.time())
     if value == 'now':
         return now
-    elif value.endswith('min'):
-        return now + int(value[:-3]) * 60
-    elif value.endswith('h'):
-        return now + int(value[:-1]) * 3600
-    elif value.endswith('d'):
-        return now + int(value[:-1]) * 86400
-    elif value.endswith('w'):
-        return now + int(value[:-1]) * 86400 * 7
-    elif value.endswith('mon'):
-        return now + int(value[:-3]) * 86400 * 30
-    elif value.endswith('y'):
-        return now + int(value[:-1]) * 86400 * 365
-    else:
-        return int(value)
+
+    is_abs, delta = utils.parse_interval(value)
+    if is_abs:
+        return delta
+    return now + delta
 
 
 @app.api('/render')
@@ -44,9 +36,11 @@ def parse_date(value):
     end=item(parse_date, src='until'),
     max_points=opt(int, src='maxDataPoints'),
 )
+@profile_func
 def render(_req, targets, start, end, max_points):
     # print(_req.body)
-    ctx = evaluator.make_context(start, end)
+    if max_points == 0: max_points = None
+    ctx = evaluator.make_context(start, end, max_points=max_points)
     data = ctx['data']
 
     dstart = time.perf_counter()

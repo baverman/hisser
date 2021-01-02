@@ -16,20 +16,6 @@ def test_non_empty_rows():
     assert result == [('foo', array.array('d', [1, 2]))]
 
 
-def test_run_in_fork(tmpdir):
-    def worker():
-        tmpdir.join('boo').ensure()
-
-    f = utils.run_in_fork(worker)
-
-    stop = time.time() + 3
-    while time.time() < stop:
-        pid, _status = utils.wait_childs()
-        if pid == f.pid:
-            break
-        time.sleep(0.1)
-
-
 def test_open_env(tmpdir):
     with utils.open_env(str(tmpdir.join('boo'))) as env:
         assert env.info()['map_size'] == 10485760
@@ -44,3 +30,15 @@ def test_open_env(tmpdir):
 def test_make_key():
     assert utils.make_key(b'boo.foo.bam') == b"boo.foo.'\r\xf8\xb3\x1a\x14\xfa\x18"
     assert utils.make_key_u('boo.foo.bam') == b"boo.foo.'\r\xf8\xb3\x1a\x14\xfa\x18"
+
+
+def test_parse_interval():
+    assert utils.parse_interval(10) == (True, 10)
+    assert utils.parse_interval('10') == (True, 10)
+    assert utils.parse_interval('10s') == (False, 10)
+    assert utils.parse_interval('10min') == (False, 600)
+    assert utils.parse_interval('10h') == (False, 36000)
+    assert utils.parse_interval('10d') == (False, 864000)
+    assert utils.parse_interval('10w') == (False, 6048000)
+    assert utils.parse_interval('10mon') == (False, 25920000)
+    assert utils.parse_interval('10y') == (False, 315360000)
