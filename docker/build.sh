@@ -1,5 +1,6 @@
 #!/bin/sh
-hisser_version=${1:-0.17.dev3}
+set -e
+hisser_version=${1:-0.18.dev2}
 name=${2:-baverman/graphite-hisser}
 tag=${3:-$hisser_version-1}
 
@@ -15,6 +16,9 @@ fi
 tar cf - . -C .. $files | docker build \
   $proxy_opts --network=host \
   -t $name:$tag -t $name:latest -
+
+docker run --rm $name:$tag python3 -m hisser.wsgi
+docker run --rm $name:$tag python3 -m hisser --help
 
 if [ "$PUSH" ]; then
     docker push $name:$tag

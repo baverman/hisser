@@ -8,6 +8,7 @@ from graphite.finders.utils import BaseFinder
 from graphite.render.grammar import grammar
 
 from . import config
+from .dataset import Dataset, Name
 
 log = logging.getLogger('hisser.graphite')
 
@@ -91,22 +92,16 @@ class Finder(BaseFinder):
                 names.update(v)
 
         names = sorted(names)
-        time_info, data = self.reader.fetch(names, int(start_time), int(stop_time))
+        time_info, data, rnames = self.reader.fetch(names, int(start_time), int(stop_time))
 
+        nidx = {it: i for i, it in enumerate(rnames)}
         result = []
 
         for metrics in filter(None, (smetrics, tmetrics)):
             for query, names in metrics.items():
-                for name in names:
-                    values = data.get(name)
-                    if values:
-                        result.append({
-                            'pathExpression': query,
-                            'path': name.decode(),
-                            'name': name.decode(),
-                            'time_info': time_info,
-                            'values': values,
-                        })
+                enames = [nidx.get(it) for it in names]
+                qnames = [(Name(rnames[it].decode()), it) for it in enames if it is not None]
+                result.append(Dataset(query, qnames, data, *time_info))
 
         return result
 

@@ -1,6 +1,5 @@
 import os
 import time
-import errno
 import socket
 import signal
 import logging
@@ -8,7 +7,8 @@ import threading
 
 from nanoio import spawn, Loop, recv, accept, wait_io, WAIT_READ, sendall, sleep
 
-from .utils import run_in_fork, wait_childs, mloads, mdumps
+from .utils import mloads, mdumps
+from . import tasks
 
 log = logging.getLogger(__name__)
 
@@ -25,10 +25,7 @@ class Server:
         self.backlog = backlog
         self.disable_housework = disable_housework
 
-        self.ready_to_merge = False
-        self.flush_pids = set()
-        self.merge_pid = None
-
+        self.tm = tasks.TaskManager()
         self.loop = Loop()
 
     def handle_carbon_tcp(self):
@@ -127,56 +124,33 @@ class Server:
             self.setup_signals()
 
         if self.link_host_port:
-            self.link_server = RpcServer(self.buf, *self.link_host_port)
+            self.link_server = RpcServer(self, *self.link_host_port)
             self.link_thread = threading.Thread(
                 target=self.link_server.start, daemon=True)
             self.link_thread.start()
 
-    def check_childs(self):
-        if self.flush_pids or self.merge_pid:
-            try:
-                pid, _exit = wait_childs()
-            except OSError as e:  # pragma: no cover
-                if e.errno == errno.ECHILD:
-                    self.flush_pids.clear()
-                    self.merge_pid = None
-                else:
-                    raise
-            else:
-                if self.flush_pids and pid in self.flush_pids:
-                    self.flush_pids.remove(pid)
-                    self.ready_to_merge = True
-                if self.merge_pid and self.merge_pid == pid:
-                    self.merge_pid = None
-            return True
-        return False
-
     def check_buffer(self, now=None):
         data, new_names = self.buf.tick(now=now)
-        if data:
-            self.flush_pids.add(run_in_fork(self.storage.new_block, *data).pid)
-            self.ready_to_merge = False
-
         if new_names:
-            self.flush_pids.add(run_in_fork(self.storage.new_names, new_names).pid)
+            self.tm.add('names', self.storage.new_names, new_names)
 
-        if (not self.disable_housework
-                and self.ready_to_merge
-                and not self.merge_pid):
-            self.merge_pid = run_in_fork(self.storage.do_housework).pid
-            self.ready_to_merge = False
+        if data:
+            self.data_to_flush = data
+            self.tm.add('data', self.storage.new_block, *data)
+            if not self.disable_housework:
+                self.tm.add('housework', self.storage.do_housework)
 
     async def check_aux(self):
         while True:
             await sleep(3)
-            self.check_childs()
-            self.check_buffer()
+            if not self.tm.check():
+                self.check_buffer()
 
     def run(self):
         self.loop.spawn(self.check_aux())
         self.loop.run()
 
-        while self.check_childs():
+        while self.tm.check():
             time.sleep(1)
 
         data, _new_names = self.buf.tick(force=True)
@@ -185,10 +159,11 @@ class Server:
 
 
 class RpcServer:
-    def __init__(self, buf, host, port):
-        self.buf = buf
+    def __init__(self, server, host, port):
+        self.server = server
         self.host = host
         self.port = port
+        self.last_ts = None
 
     async def handler(self, conn):
         data = []
@@ -215,7 +190,26 @@ class RpcServer:
         conn.close()
 
     def rpc_fetch(self, keys):
-        return self.buf.get_data(keys)
+        if self.server.tm.name_is_running('data'):
+            data, ts, resolution, size, _ = self.server.data_to_flush
+            if self.last_ts != ts:
+                data = self.last_data = dict(data)
+            else:
+                data = self.last_data
+
+            result = {}
+            for k in keys:
+                try:
+                    result[k] = list(data[k])
+                except KeyError:
+                    pass
+
+            return {'start': ts,
+                    'result': result,
+                    'resolution': resolution,
+                    'size': size}
+        else:
+            return self.server.buf.get_data(keys)
 
     def start(self):
         loop = Loop()

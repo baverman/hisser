@@ -3,11 +3,14 @@ import time
 import socket
 from threading import Thread
 
+import numpy as np
+
 from hisser import config
+from .helpers import assert_naneq
 
 
 def get_config(data_dir, **opts):
-    opts['LOGGING_LEVEL'] = 'INFO'
+    opts['LOGGING_LEVEL'] = 'DEBUG'
     opts['DATA_DIR'] = data_dir
     opts['CARBON_BIND'] = '127.0.0.1:14000'
     opts['CARBON_BIND_UDP'] = '127.0.0.1:14001'
@@ -51,7 +54,7 @@ def test_simple(tmpdir):
 
     cfg.server.check_buffer(start + 60)
 
-    while cfg.server.check_childs():
+    while cfg.server.tm.check():
         time.sleep(0.1)
 
     f = graphite.Finder(cfg)
@@ -61,11 +64,11 @@ def test_simple(tmpdir):
     result = [(r.path, r.is_leaf) for r in f.find_nodes(q)]
     assert result == [('hisser', False), ('m1', True), ('m2', True)]
 
-    result, = f.fetch(['m1'], start - 60, start + 60)
-    assert result['path'] == 'm1'
+    ds, = f.fetch(['m1'], start - 60, start + 60)
+    assert ds.names == [('m1', 0)]
 
-    result, = f.fetch(["seriesByTag('tag=value')"], start - 60, start + 60)
-    assert result['path'] == 'm3;tag=value'
+    ds, = f.fetch(["seriesByTag('tag=value')"], start - 60, start + 60)
+    assert ds.names == [('m3;tag=value', 0)]
 
     result = f.auto_complete_tags([], 't')
     assert result == ['tag']
@@ -74,12 +77,12 @@ def test_simple(tmpdir):
     assert result == ['value']
 
     result = cfg.reader.fetch([b'm1', b'm0'], start - 60, start + 60)
-    assert result[1] == {b'm1': [None, 10.0, None]}
+    assert_naneq(result[1], [np.nan, 10.0, np.nan])
 
     r, w = os.pipe()
     os.write(w, bytes([2]))
     cfg.server.loop.spawn(cfg.server.handle_signals(r))
     time.sleep(5)
 
-    while cfg.server.check_childs():
+    while cfg.server.tm.check():
         time.sleep(0.1)

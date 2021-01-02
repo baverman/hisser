@@ -53,10 +53,14 @@ def test_config_from_file(tmpdir, monkeypatch):
 
 def test_config_from_env(monkeypatch):
     monkeypatch.setattr('hisser.config.defaults.FOO', '', raising=False)
+    monkeypatch.setattr('hisser.config.defaults.BOOL', False, raising=False)
     opts = {'FOO': 20}
     os.environ['HISSER_FOO'] = '10'
+    os.environ['HISSER_BOOL'] = 'n'
     cfg = get_config(opts)
     assert cfg.FOO == '10'
+    assert cfg.BOOL == 'n'
+    assert cfg.bool('BOOL') is False
 
 
 def test_config_error(monkeypatch):

@@ -25,7 +25,7 @@ def validate(params):
         else:
             vtype = type(ptypes[name])
 
-        if vtype is not str:
+        if vtype not in (str, bool):
             try:
                 params[name] = vtype(val)
             except Exception as e:
