@@ -155,3 +155,30 @@ def iter_chunks(it, size):  # pragma: no cover
         if not data:
             break
         yield data
+
+
+def clone(src, **kwargs):
+    """Clones object with optionally overridden fields"""
+    obj = object.__new__(type(src))
+    obj.__dict__.update(src.__dict__)
+    obj.__dict__.update(kwargs)
+    return obj
+
+
+def parse_interval(value):
+    if value.endswith('s'):
+        return False, int(value[:-1])
+    if value.endswith('min'):
+        return False, int(value[:-3]) * 60
+    elif value.endswith('h'):
+        return False, int(value[:-1]) * 3600
+    elif value.endswith('d'):
+        return False, int(value[:-1]) * 86400
+    elif value.endswith('w'):
+        return False, int(value[:-1]) * 86400 * 7
+    elif value.endswith('mon'):
+        return False, int(value[:-3]) * 86400 * 30
+    elif value.endswith('y'):
+        return False, int(value[:-1]) * 86400 * 365
+
+    return True, int(value)

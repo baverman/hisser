@@ -1,0 +1,57 @@
+{% macro make_funcs(name, acc, result) %}
+cdef void {{ name }}_idx_t_impl(const double* data, size_t data_cols, const long* idx, size_t idx_count, double* result) nogil:
+    cdef size_t i, j, cnt0, cnt1, cnt2, cnt3, base
+    cdef double tmp0, tmp1, tmp2, tmp3
+    j = 0
+    for j in range(0, (data_cols >> 2) << 2, 4):
+        {% for n in range(4) %}
+        tmp{{ n }} = 0.0
+        cnt{{ n }} = 0
+        {% endfor %}
+        for i in range(idx_count):
+            base = idx[i]*data_cols + j
+            {% for n in range(4) %}
+            if not isnan(data[base + {{ n }}]):
+                cnt{{ n }} += 1
+                {{ acc.format(n=n, acc='tmp{}'.format(n), cnt='cnt{}'.format(n), it='data[base + {}]'.format(n)) }}
+            {% endfor %}
+
+        {% for n in range(4) %}
+        result[j + {{ n }}] = {{ result.format(n=n, acc='tmp{}'.format(n), cnt='cnt{}'.format(n)) }}
+        {% endfor %}
+
+    for j in range(j, data_cols):
+        tmp0 = 0.0
+        cnt0 = 0
+        for i in range(idx_count):
+            base = idx[i]*data_cols + j
+            if not isnan(data[base]):
+                cnt0 += 1
+                {{ acc.format(n=0, acc='tmp0', cnt='cnt0', it='data[base]') }}
+
+        result[j] = {{ result.format(n=n, acc='tmp0', cnt='cnt0') }}
+
+
+cdef void {{name}}_window_impl(const double* data, size_t count, size_t wsize, size_t wstart, double* result) nogil:
+    cdef size_t i, wi, ri
+    cdef double acc = 0
+    cdef size_t cnt = 0
+    wi = wstart
+    ri = 0
+    i = 0
+    while i < count:
+        if not isnan(data[i]):
+            cnt += 1
+            {{ acc.format(acc='acc', cnt='cnt', it='data[i]') }}
+        wi += 1
+        i += 1
+        if wi == wsize:
+            result[ri] = {{ result.format(acc='acc', cnt='cnt') }}
+            ri += 1
+            wi = 0
+            acc = 0
+            cnt = 0
+
+    if wi:
+        result[ri] = {{ result.format(acc='acc', cnt='cnt') }}
+{% endmacro %}

@@ -3,6 +3,7 @@
 /.cache
 /graphite_local_settings.py
 /test.py
+/test_numpy.py
 /bench*
 /.coverage
 /.pytest_cache
@@ -10,8 +11,8 @@
 /build
 /*.egg-info
 *.so
+/.build-state
 /*.http
 /*.ini
 /TODO
 /hisser/*.html
-/hisser/*.ts

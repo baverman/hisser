@@ -2,8 +2,12 @@ import io
 import os.path
 import array
 
+import numpy as np
+
 from hisser import db, blocks, metrics, agg
 from hisser.utils import make_key_u as mk
+
+from .helpers import assert_naneq
 
 
 def make_block(ts, resolution, size):
@@ -114,9 +118,10 @@ def test_storage_read_write(tmpdir):
     mi = metrics.MetricIndex(os.path.join(data_dir, 'metric.index'))
 
     reader = db.Reader(bl, [(10, 10)], None, 10)
-    info, data = reader.fetch([b'm1'], 500, 1500, now=1500)
+    info, data, names = reader.fetch([b'm1'], 500, 1500, now=1500)
     assert info == (500, 500, 10)
-    assert data == {}
+    assert data.shape == (0, 0)
+    assert names == []
 
     data = [(b'm1', array.array('d', [1, 2, 3]))]
     storage = db.Storage(data_dir, None, None, None, None, mi)
@@ -124,23 +129,27 @@ def test_storage_read_write(tmpdir):
     assert read_name_block(p) == [b'm1']
     assert read_name_block(p + 'non-exists') == []
 
-    info, data = reader.fetch([b'm1'], 500, 1500)
+    info, data, names = reader.fetch([b'm1'], 500, 1500)
     assert info == (1000, 1030, 10)
-    assert data == {b'm1': [1, 2, 3]}
+    assert names == [b'm1']
+    assert data.tolist() == [[1, 2, 3]]
 
-    info, data = reader.fetch([b'm1'], 500, 1020)
+    info, data, names = reader.fetch([b'm1'], 500, 1020)
     assert info == (1000, 1030, 10)
-    assert data == {b'm1': [1, 2, 3]}
+    assert names == [b'm1']
+    assert data.tolist() == [[1, 2, 3]]
 
     reader = db.Reader(bl, [(10, 10)], RpcClient, 10)
-    info, data = reader.fetch([b'm1'], 500, 1030, now=1040)
+    info, data, names = reader.fetch([b'm1'], 500, 1030, now=1040)
     assert info == (1000, 1040, 10)
-    assert data == {b'm1': [1, 2, 3, 4]}
+    assert names == [b'm1']
+    assert data.tolist() == [[1, 2, 3, 4]]
 
     reader = db.Reader(bl, [(10, 10)], BrokenRpcClient, 10)
-    info, data = reader.fetch([b'm1'], 500, 1030, now=1040)
+    info, data, names = reader.fetch([b'm1'], 500, 1030, now=1040)
     assert info == (1000, 1030, 10)
-    assert data == {b'm1': [1, 2, 3]}
+    assert names == [b'm1']
+    assert data.tolist() == [[1, 2, 3]]
 
 
 def test_new_data_in_buffer(tmpdir):
@@ -160,10 +169,11 @@ def test_new_data_in_buffer(tmpdir):
     db.new_block(data_dir, data, 1000, 10, 3, append=True)
 
     reader = db.Reader(bl, [(10, 10)], EmptyRpcClient, 10)
-    info, data = reader.fetch([b'm1', b'm2'], 500, 1030, now=1040)
+    info, data, names = reader.fetch([b'm1', b'm2'], 500, 1030, now=1040)
     assert info == (1000, 1040, 10)
-    assert data == {b'm1': [1, 2, 3, None],
-                    b'm2': [None, None, None, 4]}
+    assert names == [b'm1', b'm2']
+    assert_naneq(data, [[1.0, 2.0, 3.0, np.nan],
+                        [np.nan, np.nan, np.nan, 4.0]])
 
 
 def test_storage_house_work(tmpdir):
