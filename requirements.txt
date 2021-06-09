@@ -1,4 +1,4 @@
-Django==2.2.13
+Django==2.2.22
 uwsgi==2.0.18
 ujson-x==1.36.1
 graphite-web==1.1.7
