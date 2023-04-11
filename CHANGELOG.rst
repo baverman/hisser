@@ -1,3 +1,13 @@
+0.20
+====
+
+* Huge performance improvements. Aggregations implemented via custom C-module.
+  Other often used functions rewritten using numpy.
+
+* Update base image to alpine:17. Use numpy package from alpine repository
+  instead of compiling it with `pip install ...`
+
+
 0.17
 ====
 

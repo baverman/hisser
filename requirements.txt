@@ -1,5 +1,5 @@
 Django==2.2.13
-uwsgi==2.0.19.1
+uwsgi==2.0.21
 ujson-x==1.37
 graphite-web==1.1.7
 click==6.7
@@ -8,4 +8,3 @@ msgpack==1.0.0
 xxhash==1.2.0
 nanoio==0.2
 covador==0.10.1
-numpy==1.19.4

@@ -25,7 +25,7 @@ setup(
     description='Fast TSDB backend for graphite',
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
-    install_requires=['msgpack', 'click', 'lmdb', 'xxhash', 'covador', 'nanoio'],
+    install_requires=['msgpack', 'click', 'lmdb', 'xxhash', 'covador', 'nanoio', 'numpy'],
     ext_modules=extensions,
     entry_points={
         'console_scripts': ['hisser = hisser.__main__:cli']
