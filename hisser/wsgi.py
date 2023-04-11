@@ -16,6 +16,13 @@ from hisser.profile import profile_func
 app = application = Application()
 slow_log = logging.getLogger('hisser.slowlog')
 
+try:
+    import uwsgi
+except ImportError:
+    pass
+else:
+    current.config.setup_logging(daemon=True)
+
 
 def parse_date(value):
     value = value.decode()

@@ -191,6 +191,13 @@ class Config(dict):
             logging.basicConfig(level=self.LOGGING_LEVEL,
                                 format='[%(asctime)s] %(name)s:%(levelname)s %(message)s')
 
+        sentry_dsn = os.environ.get('SENTRY_DSN')
+        if sentry_dsn:
+            from raven.handlers.logging import SentryHandler
+            handler = SentryHandler(sentry_dsn)
+            handler.setLevel(logging.ERROR)
+            logging.getLogger().addHandler(handler)
+
 
 def parse_retentions(string):
     result = (part.split(':') for part in string.split(','))
