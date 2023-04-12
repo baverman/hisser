@@ -135,7 +135,6 @@ class Server:
             self.tm.add('names', self.storage.new_names, new_names)
 
         if data:
-            self.data_to_flush = data
             self.tm.add('data', self.storage.new_block, *data)
             if not self.disable_housework:
                 self.tm.add('housework', self.storage.do_housework)
@@ -143,6 +142,8 @@ class Server:
     async def check_aux(self):
         while True:
             await sleep(3)
+            if self.link_server:
+                self.buf.add(time.time(), b'hisser.link.accepted', self.link_server.accepted_requests)
             if not self.tm.check():
                 self.check_buffer()
 
@@ -164,6 +165,7 @@ class RpcServer:
         self.host = host
         self.port = port
         self.last_ts = None
+        self.accepted_requests = 0
 
     async def handler(self, conn):
         data = []
@@ -190,26 +192,7 @@ class RpcServer:
         conn.close()
 
     def rpc_fetch(self, keys):
-        if self.server.tm.name_is_running('data'):
-            data, ts, resolution, size, _ = self.server.data_to_flush
-            if self.last_ts != ts:
-                data = self.last_data = dict(data)
-            else:
-                data = self.last_data
-
-            result = {}
-            for k in keys:
-                try:
-                    result[k] = list(data[k])
-                except KeyError:
-                    pass
-
-            return {'start': ts,
-                    'result': result,
-                    'resolution': resolution,
-                    'size': size}
-        else:
-            return self.server.buf.get_data(keys)
+        return self.server.buf.get_data(keys)
 
     def start(self):
         loop = Loop()
@@ -223,6 +206,7 @@ class RpcServer:
         async def server_loop():
             while True:
                 conn, _addr = await accept(listen_sock)
+                self.accepted_requests += 1
                 loop.spawn(self.handler(conn))
 
         loop.run(server_loop())

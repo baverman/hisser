@@ -197,6 +197,8 @@ def nandiff1d(data):
 
 
 def _derivative(data):
+    if not len(data):
+        return data
     return np.apply_along_axis(nandiff1d, 1, data)
 
 

@@ -1,5 +1,8 @@
 0.20
 ====
+* [Feature] Sentry integration via SENTRY_DSN envvar.
+
+* [Fix] During data flush http interface receives gap in data.
 
 * [Optimization] Huge performance improvements. Aggregations implemented via custom C-module.
   Other often used functions rewritten using numpy.
@@ -8,8 +11,6 @@
   instead of compiling it with `pip install ...`
 
 * [Update] lmdb, cffi, uwsgi.
-
-* [Feature] Sentry integration via SENTRY_DSN envvar.
 
 
 0.17

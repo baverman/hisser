@@ -34,10 +34,10 @@ def test_simple():
     result = buf.get_data(['m1', 'm2'])
     result['result']['m1'] = fnan(result['result']['m1'])
 
-    assert result == {'start': 970,
-                      'result': {'m1': [None] * 3 + [1.0, 2.0, 3.0] + [None]*24},
+    assert result == {'start': 920,
+                      'result': {'m1': [None] * 8 + [1.0, 2.0, 3.0] + [None]*24},
                       'resolution': 10,
-                      'size': 30}
+                      'size': 35}
 
     data, new_names = buf.tick(now=900)
     assert data is None

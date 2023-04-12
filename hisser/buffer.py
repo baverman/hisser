@@ -1,8 +1,9 @@
 import logging
 from math import isnan
-from time import time
+from time import time, monotonic
 from array import array
 from resource import getrusage, RUSAGE_SELF, RUSAGE_CHILDREN
+from threading import Lock
 
 from .utils import NAN, empty_rows
 
@@ -24,33 +25,40 @@ class Buffer:
         self.names_to_check = []
         self.collected_metrics = 0
 
-        self.empty_row = array('d', [NAN] * size)
+        self.empty_row = array('d', [NAN] * (size + self.flush_size))
         self.past_points = 0
         self.future_points = 0
         self.received_points = 0
         self.flushed_points = 0
         self.last_size = 0
 
+        self.cut_lock = Lock()
+
         self.set_ts(now or time())
 
     def get_data(self, keys):
         result = {}
-        for k in keys:
-            try:
-                result[k] = list(self.data[k])
-            except KeyError:
-                pass
+        s = monotonic()
+        with self.cut_lock:
+            lock_get_wait_time = monotonic() - s
+            if lock_get_wait_time > 0.1:
+                log.info('slow get_data lock %s', lock_get_wait_time)
+            for k in keys:
+                try:
+                    result[k] = list(self.data[k])
+                except KeyError:
+                    pass
 
-        return {'start': self.ts,
+        return {'start': self.ts - self.flush_size * self.resolution,
                 'result': result,
                 'resolution': self.resolution,
-                'size': self.size}
+                'size': self.size + self.flush_size}
 
     def cut_data(self, size):
-        result = []
         empty_part = array('d', [NAN] * size)
+        result = []
         for k, v in self.data.items():
-            result.append((k, v[:size]))
+            result.append((k, v[self.flush_size:self.flush_size+size]))
             v[:-size] = v[size:]
             v[-size:] = empty_part[:]
         return result
@@ -68,19 +76,20 @@ class Buffer:
 
     def flush(self, size):
         self.flushed_points += len(self.data) * size
+        with self.cut_lock:
+            data = self.cut_data(size)
+            if data:
+                result = (data, self.ts, self.resolution, size, self.new_names[:])
 
-        data = self.cut_data(size)
-        if data:
-            result = (data, self.ts, self.resolution, size, self.new_names[:])
+                estimated_metrics = self.collected_metrics // size
+                if not self.names_to_check and estimated_metrics / len(self.data) < self.compact_ratio:
+                    log.info('Compact data %d -> %d', len(self.data), estimated_metrics)
+                    self.names_to_check = list(self.data)
+            else:
+                result = None
 
-            estimated_metrics = self.collected_metrics // size
-            if not self.names_to_check and estimated_metrics / len(self.data) < self.compact_ratio:
-                log.info('Compact data %d -> %d', len(self.data), estimated_metrics)
-                self.names_to_check = list(self.data)
-        else:
-            result = None
+            self.ts += self.resolution * size
 
-        self.ts += self.resolution * size
         self.collected_metrics = 0
         self.last_size = 0
         self.new_names[:] = []
@@ -88,7 +97,7 @@ class Buffer:
 
     def add(self, ts, name, value):
         self.received_points += 1
-        idx = (int(ts) - self.ts) // self.resolution
+        idx = (int(ts) - self.ts) // self.resolution + self.flush_size
         try:
             row = self.get_row(name)
             oldvalue = row[idx]
