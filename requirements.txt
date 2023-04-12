@@ -1,8 +1,9 @@
+cffi==1.15.1
 click==6.7
 covador==0.10.1
 Django==2.2.13
 graphite-web==1.1.7
-lmdb==0.94
+lmdb==1.4.1
 msgpack==1.0.0
 nanoio==0.2
 pyparsing==2.4.7

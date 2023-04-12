@@ -154,6 +154,7 @@ class Storage:
             data = sorted((make_key(k), v) for k, v in filtered)
             path = new_block(self.data_dir, data, ts, resolution, size, append=True)
             write_name_block(nblock_fname(path), (k for k, v in filtered))
+            log.info('flushed %d metrics into %s', len(data), path)
             return path
 
     def new_names(self, new_names):

@@ -4,8 +4,10 @@
 * [Optimization] Huge performance improvements. Aggregations implemented via custom C-module.
   Other often used functions rewritten using numpy.
 
-* [Update] Update base image to alpine:17. Use numpy package from alpine repository
+* [Update] Update base image to alpine:17 (python 3.10). Use numpy package from alpine repository
   instead of compiling it with `pip install ...`
+
+* [Update] lmdb, cffi, uwsgi.
 
 * [Feature] Sentry integration via SENTRY_DSN envvar.
 

@@ -137,6 +137,8 @@ class Buffer:
         now = int(now or time())
         size = (now - self.past_size * self.resolution - self.ts) // self.resolution
 
+        # print('INFO:', now-self.ts, size, self.data.get(b'hisser.received-points'))
+
         if size < 0:
             return None, None
 

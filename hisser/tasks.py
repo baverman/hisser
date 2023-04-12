@@ -5,6 +5,9 @@ import errno
 from time import time
 from collections import namedtuple
 
+import logging
+log = logging.getLogger('hisser.tm')
+
 Fork = namedtuple('Fork', 'pid start')
 
 
@@ -40,6 +43,7 @@ class TaskManager:
         return bool(self.task_map)
 
     def add(self, name, fn, *args, **kwargs):
+        log.debug('Running %s %s', name, fn)
         pid = run_in_fork(fn, *args, **kwargs).pid
         self.task_map[pid] = name
 

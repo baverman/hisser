@@ -15,7 +15,7 @@ RUN apk add python3-dev libffi-dev openssl-dev pcre-dev build-base linux-headers
 ENV GRAPHITE_NO_PREFIX=True \
     PYTHONPATH=/pypkg/lib/python3.10/site-packages
 
-RUN pip install --prefix=/pypkg --no-binary=:all: cffi
+RUN pip install --prefix=/pypkg --no-binary=:all: cffi==1.15.1
 
 COPY /requirements.txt /
 RUN pip install --prefix=/pypkg -r requirements.txt
