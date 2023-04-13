@@ -93,7 +93,7 @@ class Dataset:
             rows.append(np.array(ts, dtype='d'))
 
         result = Dataset(ts.pathExpression, names, np.array(rows, dtype='d'),
-                         ts.start, ts.end, ts.step, consolidate=ts.consolidate, tslist=tslist)
+                         ts.start, ts.end, ts.step, consolidate=ts.consolidationFunc, tslist=tslist)
         result.implicit_consolidate = ds.implicit_consolidate
         return result
 
