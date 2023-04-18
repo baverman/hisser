@@ -1234,6 +1234,9 @@ static CYTHON_INLINE int __pyx_sub_acquisition_count_locked(
 static CYTHON_INLINE void __Pyx_INC_MEMVIEW(__Pyx_memviewslice *, int, int);
 static CYTHON_INLINE void __Pyx_XDEC_MEMVIEW(__Pyx_memviewslice *, int, int);
 
+/* None.proto */
+static CYTHON_INLINE void __Pyx_RaiseUnboundLocalError(const char *varname);
+
 /* PyThreadStateGet.proto */
 #if CYTHON_FAST_THREAD_STATE
 #define __Pyx_PyThreadState_declare  PyThreadState *__pyx_tstate;
@@ -1523,9 +1526,6 @@ static CYTHON_INLINE int __Pyx_PyList_Append(PyObject* list, PyObject* x) {
 #else
 #define __Pyx_PyList_Append(L,x) PyList_Append(L,x)
 #endif
-
-/* None.proto */
-static CYTHON_INLINE void __Pyx_RaiseUnboundLocalError(const char *varname);
 
 /* ImportFrom.proto */
 static PyObject* __Pyx_ImportFrom(PyObject* module, PyObject* name);
@@ -1927,7 +1927,7 @@ static int __pyx_f_6hisser_4pack__array_is_empty(double *, size_t); /*proto*/
 static PyObject *__pyx_f_6hisser_4pack_unpack(PyObject *, PyObject *, int __pyx_skip_dispatch); /*proto*/
 static void __pyx_f_6hisser_4pack__decode(unsigned char const *, Py_ssize_t, unsigned char *, Py_ssize_t); /*proto*/
 static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *, int, uint32_t); /*proto*/
-static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *, int __pyx_skip_dispatch); /*proto*/
+static PyObject *__pyx_f_6hisser_4pack_pack(__Pyx_memviewslice, int __pyx_skip_dispatch); /*proto*/
 static size_t __pyx_f_6hisser_4pack__encode(unsigned PY_LONG_LONG *, size_t, unsigned char *, unsigned PY_LONG_LONG *); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static void *__pyx_align_pointer(void *, size_t); /*proto*/
@@ -2170,7 +2170,7 @@ static PyObject *__pyx_n_s_view;
 static PyObject *__pyx_pf_6hisser_4pack_array_is_empty(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data); /* proto */
 static PyObject *__pyx_pf_6hisser_4pack_2unpack(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_data, PyObject *__pyx_v_count); /* proto */
 static PyObject *__pyx_pf_6hisser_4pack_4unpack_into(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_view, __Pyx_memviewslice __pyx_v_data); /* proto */
-static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data); /* proto */
+static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_view); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -3276,21 +3276,21 @@ static CYTHON_INLINE int __pyx_f_6hisser_4pack_encode_varint(unsigned char *__py
 /* "hisser/pack.pyx":87
  * 
  * 
- * cpdef pack(array.array data):             # <<<<<<<<<<<<<<
- *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
+ * cpdef pack(double [::1] view):             # <<<<<<<<<<<<<<
+ *     cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
  */
 
-static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
-static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UNUSED int __pyx_skip_dispatch) {
+static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_arg_view); /*proto*/
+static PyObject *__pyx_f_6hisser_4pack_pack(__Pyx_memviewslice __pyx_v_view, CYTHON_UNUSED int __pyx_skip_dispatch) {
   arrayobject *__pyx_v_result = 0;
   arrayobject *__pyx_v_buf = 0;
   size_t __pyx_v_offset;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
-  Py_ssize_t __pyx_t_1;
+  PyObject *__pyx_t_1 = NULL;
   PyObject *__pyx_t_2 = NULL;
-  PyObject *__pyx_t_3 = NULL;
+  Py_ssize_t __pyx_t_3;
   int __pyx_t_4;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
@@ -3299,83 +3299,69 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
 
   /* "hisser/pack.pyx":88
  * 
- * cpdef pack(array.array data):
- *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))             # <<<<<<<<<<<<<<
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
- *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
+ * cpdef pack(double [::1] view):
+ *     cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))             # <<<<<<<<<<<<<<
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
+ *     cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)
  */
-  if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 88, __pyx_L1_error)
-  }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 88, __pyx_L1_error)
-  __pyx_t_2 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __pyx_t_1 = PyInt_FromSsize_t((((__pyx_v_view.shape[0]) * 8) * 2)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 88, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_u_B);
   __Pyx_GIVEREF(__pyx_n_u_B);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_u_B);
-  __Pyx_GIVEREF(__pyx_t_3);
-  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_3);
-  __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_v_result = ((arrayobject *)__pyx_t_3);
-  __pyx_t_3 = 0;
+  PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_n_u_B);
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_t_2);
+  __pyx_t_2 = 0;
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_result = ((arrayobject *)__pyx_t_2);
+  __pyx_t_2 = 0;
 
   /* "hisser/pack.pyx":89
- * cpdef pack(array.array data):
- *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))             # <<<<<<<<<<<<<<
- *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
+ * cpdef pack(double [::1] view):
+ *     cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))             # <<<<<<<<<<<<<<
+ *     cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)
  *     array.resize(result, offset)
  */
-  if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 89, __pyx_L1_error)
-  }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 89, __pyx_L1_error)
-  __pyx_t_3 = PyInt_FromSsize_t(((__pyx_t_1 * 8) * 2)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 89, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_2 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_2 = PyInt_FromSsize_t((((__pyx_v_view.shape[0]) * 8) * 2)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 89, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_1 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyBytes_Type)), __pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_u_Q);
   __Pyx_GIVEREF(__pyx_n_u_Q);
-  PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_u_Q);
-  __Pyx_GIVEREF(__pyx_t_2);
-  PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_t_2);
-  __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_v_buf = ((arrayobject *)__pyx_t_2);
-  __pyx_t_2 = 0;
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_u_Q);
+  __Pyx_GIVEREF(__pyx_t_1);
+  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_v_buf = ((arrayobject *)__pyx_t_1);
+  __pyx_t_1 = 0;
 
   /* "hisser/pack.pyx":90
- *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
- *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)             # <<<<<<<<<<<<<<
+ *     cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
+ *     cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)             # <<<<<<<<<<<<<<
  *     array.resize(result, offset)
  *     return result
  */
-  if (unlikely(((PyObject *)__pyx_v_data) == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 90, __pyx_L1_error)
-  }
-  __pyx_t_1 = Py_SIZE(((PyObject *)__pyx_v_data)); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 90, __pyx_L1_error)
-  __pyx_v_offset = __pyx_f_6hisser_4pack__encode(__pyx_v_data->data.as_ulonglongs, __pyx_t_1, __pyx_v_result->data.as_uchars, __pyx_v_buf->data.as_ulonglongs);
+  __pyx_t_3 = 0;
+  __pyx_v_offset = __pyx_f_6hisser_4pack__encode(((unsigned PY_LONG_LONG *)(&(*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_view.data) + __pyx_t_3)) ))))), (__pyx_v_view.shape[0]), __pyx_v_result->data.as_uchars, __pyx_v_buf->data.as_ulonglongs);
 
   /* "hisser/pack.pyx":91
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
- *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
+ *     cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)
  *     array.resize(result, offset)             # <<<<<<<<<<<<<<
  *     return result
  * 
@@ -3383,7 +3369,7 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   __pyx_t_4 = resize(__pyx_v_result, __pyx_v_offset); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(0, 91, __pyx_L1_error)
 
   /* "hisser/pack.pyx":92
- *     cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
+ *     cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)
  *     array.resize(result, offset)
  *     return result             # <<<<<<<<<<<<<<
  * 
@@ -3397,15 +3383,15 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
   /* "hisser/pack.pyx":87
  * 
  * 
- * cpdef pack(array.array data):             # <<<<<<<<<<<<<<
- *     cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
- *     cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
+ * cpdef pack(double [::1] view):             # <<<<<<<<<<<<<<
+ *     cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))
+ *     cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
  */
 
   /* function exit code */
   __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_3);
   __Pyx_AddTraceback("hisser.pack.pack", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
@@ -3417,27 +3403,32 @@ static PyObject *__pyx_f_6hisser_4pack_pack(arrayobject *__pyx_v_data, CYTHON_UN
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_v_data); /*proto*/
-static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_v_data) {
+static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_arg_view); /*proto*/
+static PyObject *__pyx_pw_6hisser_4pack_7pack(PyObject *__pyx_self, PyObject *__pyx_arg_view) {
+  __Pyx_memviewslice __pyx_v_view = { 0, 0, { 0 }, { 0 }, { 0 } };
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("pack (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_data), __pyx_ptype_7cpython_5array_array, 1, "data", 0))) __PYX_ERR(0, 87, __pyx_L1_error)
-  __pyx_r = __pyx_pf_6hisser_4pack_6pack(__pyx_self, ((arrayobject *)__pyx_v_data));
+  assert(__pyx_arg_view); {
+    __pyx_v_view = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_arg_view, PyBUF_WRITABLE); if (unlikely(!__pyx_v_view.memview)) __PYX_ERR(0, 87, __pyx_L3_error)
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("hisser.pack.pack", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  __pyx_r = __pyx_pf_6hisser_4pack_6pack(__pyx_self, __pyx_v_view);
 
   /* function exit code */
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __pyx_r = NULL;
-  __pyx_L0:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self, arrayobject *__pyx_v_data) {
+static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_view) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -3446,7 +3437,8 @@ static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("pack", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_6hisser_4pack_pack(__pyx_v_data, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 87, __pyx_L1_error)
+  if (unlikely(!__pyx_v_view.memview)) { __Pyx_RaiseUnboundLocalError("view"); __PYX_ERR(0, 87, __pyx_L1_error) }
+  __pyx_t_1 = __pyx_f_6hisser_4pack_pack(__pyx_v_view, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 87, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -3458,6 +3450,7 @@ static PyObject *__pyx_pf_6hisser_4pack_6pack(CYTHON_UNUSED PyObject *__pyx_self
   __Pyx_AddTraceback("hisser.pack.pack", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
+  __PYX_XDEC_MEMVIEW(&__pyx_v_view, 1);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -19953,6 +19946,11 @@ static CYTHON_INLINE void __Pyx_XDEC_MEMVIEW(__Pyx_memviewslice *memslice,
     }
 }
 
+/* None */
+static CYTHON_INLINE void __Pyx_RaiseUnboundLocalError(const char *varname) {
+    PyErr_Format(PyExc_UnboundLocalError, "local variable '%s' referenced before assignment", varname);
+}
+
 /* PyErrFetchRestore */
 #if CYTHON_FAST_THREAD_STATE
 static CYTHON_INLINE void __Pyx_ErrRestoreInState(PyThreadState *tstate, PyObject *type, PyObject *value, PyObject *tb) {
@@ -21061,11 +21059,6 @@ static PyObject* __Pyx_PyInt_AddObjC(PyObject *op1, PyObject *op2, CYTHON_UNUSED
     return (inplace ? PyNumber_InPlaceAdd : PyNumber_Add)(op1, op2);
 }
 #endif
-
-/* None */
-static CYTHON_INLINE void __Pyx_RaiseUnboundLocalError(const char *varname) {
-    PyErr_Format(PyExc_UnboundLocalError, "local variable '%s' referenced before assignment", varname);
-}
 
 /* ImportFrom */
 static PyObject* __Pyx_ImportFrom(PyObject* module, PyObject* name) {

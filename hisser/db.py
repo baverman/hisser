@@ -12,8 +12,7 @@ from itertools import islice, groupby
 from .blocks import Block, BlockList, notify_blocks_changed, get_info
 from .pack import pack, unpack, unpack_into
 from .utils import (estimate_data_size, NAN, safe_unlink,
-                    MB, page_size, norm_res, cursor, non_empty_rows,
-                    open_env, make_key)
+                    MB, page_size, norm_res, cursor, open_env, make_key)
 
 log = logging.getLogger(__name__)
 
@@ -149,13 +148,12 @@ class Storage:
 
     def new_block(self, data, ts, resolution, size, new_names):
         self.new_names(new_names)
-        filtered = list(non_empty_rows(data))
-        if filtered:
-            data = sorted((make_key(k), v) for k, v in filtered)
-            path = new_block(self.data_dir, data, ts, resolution, size, append=True)
-            write_name_block(nblock_fname(path), (k for k, v in filtered))
-            log.info('flushed %d metrics into %s', len(data), path)
-            return path
+        filtered = data
+        data = sorted((make_key(k), v) for k, v in filtered)
+        path = new_block(self.data_dir, data, ts, resolution, size, append=True)
+        write_name_block(nblock_fname(path), (k for k, v in filtered))
+        log.info('flushed %d metrics into %s', len(data), path)
+        return path
 
     def new_names(self, new_names):
         if new_names:

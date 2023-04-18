@@ -4,6 +4,7 @@
 /graphite_local_settings.py
 /test.py
 /test_numpy.py
+/pg.py
 /bench*
 /.coverage
 /.pytest_cache

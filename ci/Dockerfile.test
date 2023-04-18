@@ -4,4 +4,4 @@ FROM ${IMAGE}
 RUN apk --no-cache add build-base linux-headers libffi-dev sqlite-libs cairo
 RUN pip install --no-binary=:all: cffi
 COPY requirements.txt /
-RUN GRAPHITE_NO_PREFIX=1 pip install pytest pytest-cov -r requirements.txt
+RUN GRAPHITE_NO_PREFIX=1 pip install pytest pytest-cov pytest-mock -r requirements.txt

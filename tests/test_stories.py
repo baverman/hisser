@@ -29,8 +29,9 @@ def send_udp(data):
     s.sendto('\n'.join('{} {} {}'.format(*r) for r in data).encode(), ('127.0.0.1', 14001))
 
 
-def test_simple(tmpdir):
+def test_simple(tmpdir, mocker):
     from hisser import evaluator, graphite
+    mocker.patch('hisser.tasks.IMMEDIATE', True)
 
     cfg = get_config(str(tmpdir))
     cfg.ensure_dirs()
@@ -52,7 +53,8 @@ def test_simple(tmpdir):
     result = cfg.rpc_client.call('fetch')
     assert 'missing' in result['error']
 
-    cfg.server.check_buffer(start + 60)
+    # trigger flush to disk
+    cfg.server.check_buffer(start + 600)
 
     while cfg.server.tm.check():
         time.sleep(0.1)

@@ -84,10 +84,10 @@ cdef inline int encode_varint(unsigned char *buf, int offset, uint32_t num) nogi
     return 0
 
 
-cpdef pack(array.array data):
-    cdef array.array result = array.array('B', bytes(len(data) * 8 * 2))
-    cdef array.array buf = array.array('Q', bytes(len(data) * 8 * 2))
-    cdef size_t offset = _encode(data.data.as_ulonglongs, len(data), result.data.as_uchars, buf.data.as_ulonglongs)
+cpdef pack(double [::1] view):
+    cdef array.array result = array.array('B', bytes(view.shape[0] * 8 * 2))
+    cdef array.array buf = array.array('Q', bytes(view.shape[0] * 8 * 2))
+    cdef size_t offset = _encode(<unsigned long long*>&view[0], view.shape[0], result.data.as_uchars, buf.data.as_ulonglongs)
     array.resize(result, offset)
     return result
 

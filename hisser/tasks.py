@@ -8,6 +8,8 @@ from collections import namedtuple
 import logging
 log = logging.getLogger('hisser.tm')
 
+IMMEDIATE = False
+
 Fork = namedtuple('Fork', 'pid start')
 
 
@@ -43,9 +45,12 @@ class TaskManager:
         return bool(self.task_map)
 
     def add(self, name, fn, *args, **kwargs):
-        log.debug('Running %s %s', name, fn)
-        pid = run_in_fork(fn, *args, **kwargs).pid
-        self.task_map[pid] = name
+        if IMMEDIATE:
+            fn(*args, **kwargs)
+        else:
+            log.debug('Running %s %s', name, fn)
+            pid = run_in_fork(fn, *args, **kwargs).pid
+            self.task_map[pid] = name
 
     def name_is_running(self, name):
         return self.task_map and name in self.task_map.values()

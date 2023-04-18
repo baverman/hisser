@@ -15,9 +15,9 @@ def test_empty_buffer():
 def test_flush_max_points():
     buf = Buffer(30, 10, 30, 3, 10, 0.9, now=1000)
     for i in range(5):
-        buf.add(1000, 'm{}'.format(i), 1)
+        buf.add(970, 'm{}'.format(i), 1)
     for i in range(5):
-        buf.add(1010, 'm{}'.format(i), 1)
+        buf.add(980, 'm{}'.format(i), 1)
 
     data, new_names = buf.tick(now=1030)
     assert data
@@ -65,8 +65,5 @@ def test_simple():
     assert (start, res, size, nn) == (1020, 10, 30, [])
     assert fnan(d) == [3.0] + [None] * 29
 
-    (data, start, res, size, nn), new_names = buf.tick(force=True, now=1500)
-    assert 'm1' not in dict(data)
-    assert (start, res, size) == (1320, 10, 18)
-    assert nn
-    assert fnan(d) == [3.0] + [None] * 29
+    data, new_names = buf.tick(force=True, now=1500)
+    assert data is None
