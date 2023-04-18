@@ -1,6 +1,7 @@
 [run]
 omit=hisser/__main__.py,
      hisser/metrics_old.py,
+     hisser/metrics_lmdb.py,
      hisser/http.py,
      hisser/wsgi.py
      hisser/profile.py

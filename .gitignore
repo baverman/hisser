@@ -5,6 +5,7 @@
 /test.py
 /test_numpy.py
 /pg.py
+/*.sql
 /bench*
 /.coverage
 /.pytest_cache

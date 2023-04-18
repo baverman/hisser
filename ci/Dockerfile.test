@@ -1,7 +1,7 @@
 ARG IMAGE
 FROM ${IMAGE}
 
-RUN apk --no-cache add build-base linux-headers libffi-dev sqlite-libs cairo
+RUN apk --no-cache add build-base linux-headers libffi-dev sqlite-libs cairo py3-numpy py3-pip python3-dev py3-wheel
 RUN pip install --no-binary=:all: cffi
 COPY requirements.txt /
 RUN GRAPHITE_NO_PREFIX=1 pip install pytest pytest-cov pytest-mock -r requirements.txt
