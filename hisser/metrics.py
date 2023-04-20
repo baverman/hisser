@@ -4,6 +4,8 @@ from fnmatch import translate
 import lmdb
 from .utils import MB, txn_cursor, make_key, cached_property
 
+MAX_KEY_SIZE=500
+
 
 class MetricIndex:
     def __init__(self, path, map_size=3000*MB):
@@ -56,6 +58,9 @@ class MetricIndex:
         for _, parts in tagged_names:
             tags.update(parts)
 
+        # for ttt in tags:
+        #     if len(ttt) > 500:
+        #         print('@@', len(ttt), ttt)
         ids = self.get_tag_ids(tags)
 
         tag_names = []
@@ -103,7 +108,12 @@ class MetricIndex:
 
             g = (r.partition(b'=') for r in sorted(unassigned_tags))
             with txn_cursor(self.env, True, self.tag_values_db) as cur:
-                cur.putmulti(((k, v) for k, _, v in g))
+                # g = list(g)
+                # print(g[0])
+                # for k, _, v in g:
+                #      if len(k) + len(v) > 300:
+                #          print('@@', len(k), len(v), k, v)
+                cur.putmulti(((k, v or b'-') for k, _, v in g))
 
         return tag_ids
 
@@ -368,7 +378,7 @@ class MultyTagIdCursor:
 def split_names(names):
     for name in names:
         if b';' in name:
-            parts = name.split(b';')
+            parts = [it[:MAX_KEY_SIZE] for it in name.split(b';')]
             yield name, (b'name=%s' % parts[0], *parts[1:])
         else:
-            yield name, [b'.%d=%s' % it for it in enumerate(name.split(b'.'))]
+            yield name, [b'.%d=%s' % (it[0], it[1][:MAX_KEY_SIZE]) for it in enumerate(name.split(b'.'))]
