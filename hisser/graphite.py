@@ -67,7 +67,7 @@ class Finder(BaseFinder):
         return result
 
     @scream
-    def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None):
+    def fetch(self, patterns, start_time, stop_time, now=None, requestContext=None, namesOnly=False):
         spatterns = []
         tpatterns = []
         cache = {}
@@ -90,6 +90,9 @@ class Finder(BaseFinder):
             tmetrics = self.find_metric_by_tags_many(tpatterns, cache)
             for v in tmetrics.values():
                 names.update(v)
+
+        if namesOnly:  # pragma: no cover
+            return names
 
         names = sorted(names)
         time_info, data, rnames = self.reader.fetch(names, int(start_time), int(stop_time))

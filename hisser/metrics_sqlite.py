@@ -19,7 +19,7 @@ def _get_connection(uri, _key):
     conn.enable_load_extension(True)
     try:
         conn.load_extension(os.path.join(EXT_PATH, 'regexp'))
-    except:
+    except:  # pragma: no cover
         log.exception('Unable to load regexp sqlite extension')
     return conn
 

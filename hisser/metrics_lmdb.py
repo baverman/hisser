@@ -1,10 +1,17 @@
+import os
 import re
+
+from itertools import takewhile
 from fnmatch import translate
 
 import lmdb
 from .utils import MB, txn_cursor, make_key, cached_property
+from . import lmdb_scan
+
+lmdb_scan.init()
 
 MAX_KEY_SIZE=500
+FAST = os.environ.get('HISSER_LMDB_PYTHON', '') != '1'
 
 
 class MetricIndex:
@@ -58,9 +65,6 @@ class MetricIndex:
         for _, parts in tagged_names:
             tags.update(parts)
 
-        # for ttt in tags:
-        #     if len(ttt) > 500:
-        #         print('@@', len(ttt), ttt)
         ids = self.get_tag_ids(tags)
 
         tag_names = []
@@ -108,11 +112,6 @@ class MetricIndex:
 
             g = (r.partition(b'=') for r in sorted(unassigned_tags))
             with txn_cursor(self.env, True, self.tag_values_db) as cur:
-                # g = list(g)
-                # print(g[0])
-                # for k, _, v in g:
-                #      if len(k) + len(v) > 300:
-                #          print('@@', len(k), len(v), k, v)
                 cur.putmulti(((k, v or b'-') for k, _, v in g))
 
         return tag_ids
@@ -169,12 +168,26 @@ class MetricIndex:
                 return list(cur.iternext_dup(False, True))
         return []
 
+    def get_tag_values_with_prefix(self, tag, value):
+        with txn_cursor(self.env, False, self.tag_values_db) as cur:
+            v = value.encode()
+            if cur.set_range_dup(tag.encode(), v):
+                fn = lambda x: x.startswith(v)
+                return list(takewhile(fn, cur.iternext_dup(False, True)))
+        return []
+
     def pattern_match(self, pattern, tag, cache):
         if pattern.startswith(':'):
             return [it.encode() for it in pattern[1:].split(',') if it]
         elif pattern.startswith('!'):
+            p = pattern[1:]
+
+            prefix, sep, suffix = p.partition('*')
+            if sep and prefix and not suffix:
+                return self.get_tag_values_with_prefix(tag, prefix)
+
             values = self.cached_tag_values(tag, cache)
-            m = re.compile(translate(pattern[1:]).encode()).match
+            m = re.compile(translate(p).encode()).match
             return [r for r in values if m(r)]
         else:
             values = self.cached_tag_values(tag, cache)
@@ -213,7 +226,11 @@ class MetricIndex:
             else:
                 queries.append(('.{}'.format(idx), '=', part))
 
-        name_ids = self._match_by_tags(queries, cache)
+        tag_ids = self._query_to_tag_ids(queries, cache)
+        if not tag_ids:
+            return []
+
+        name_ids = self._scan_tags_native(tag_ids)
         if not name_ids:
             return []  # pragma: no cover
 
@@ -250,10 +267,14 @@ class MetricIndex:
         if cache is None:
             cache = {}
 
-        name_ids = self._match_by_tags(queries, cache)
-        if not name_ids:
+        tag_ids = self._query_to_tag_ids(queries, cache)
+        if not tag_ids:
             return []
 
+        if FAST:
+            return self._scan_tags_and_names(tag_ids)
+
+        name_ids = self._scan_tags_native(tag_ids)
         result = []
         name_ids = sorted(name_ids)
         with txn_cursor(self.env, False, self.name_tags_db,
@@ -265,7 +286,7 @@ class MetricIndex:
                         self.decode_name_tagged(tag_data, ct, cache))
         return result
 
-    def _match_by_tags(self, queries, cache=None):
+    def _query_to_tag_ids(self, queries, cache=None):
         tag_ids = []
         for tag, op, value in queries:
             if op == '=':
@@ -283,37 +304,50 @@ class MetricIndex:
 
             ids = self.get_tag_ids_by_values(tag.encode(), values)
             if not ids:
-                return set()
+                return []
             tag_ids.append(ids)
+        return tag_ids
 
+    def _scan_tags_and_names(self, tag_ids):
+        with txn_cursor(self.env, False, self.tag_name_db,
+                        self.name_tags_db, self.tag_ids_rev_db) as (tn, nt, ti):
+            return lmdb_scan.scan_tags(tn, tag_ids, name_cursors=(nt, ti))
+
+    def _scan_tags_native(self, tag_ids):
         name_ids = []
         with txn_cursor(self.env, False, self.tag_name_db) as cn:
             cursors = [TagIdCursor(cn, it[0])
                        if len(it) == 1
                        else MultyTagIdCursor(cn, it)
                        for it in tag_ids]
+
+            cur_count = len(cursors)
             cname = None
-            counts = set()
+            start = 0
+            full = range(cur_count)
+            partial = range(1, cur_count)
+            ii = full
             while True:
-                for c in cursors:
-                    if not cname:
+                for i in ii:
+                    c = cursors[(start + i) % cur_count]
+
+                    if cname is None:
                         cname = c.next(None)
                         if cname is None:  # pragma: no cover
                             return name_ids
-                        counts.add(c)
                     else:
                         nname = c.next(cname)
                         if not nname:
                             return name_ids
-                        if nname == cname:
-                            counts.add(c)
-                        else:
-                            counts = set([c])
+                        if nname != cname:
                             cname = nname
-
-                if len(counts) == len(cursors):
+                            start = i
+                            ii = partial
+                            break
+                else:
                     name_ids.append(cname)
-                    counts.clear()
+                    start = 0
+                    ii = full
                     cname = (int.from_bytes(cname, 'big') + 1).to_bytes(
                         4, 'big')
 
@@ -362,17 +396,24 @@ class MultyTagIdCursor:
         c = self.cursor
         if not self.min_names:
             self.min_names = [c.get(it) for it in self.tag_ids]
+            mname = min(filter(None, self.min_names), default=None)
         else:
+            mname = None
+            min_names = self.min_names
+            tag_ids = self.tag_ids
             for idx, mn in enumerate(self.min_names):
                 if mn is None:
                     continue
                 if mn < name_id:
-                    if c.set_range_dup(self.tag_ids[idx], name_id):
-                        self.min_names[idx] = c.value()
+                    if c.set_range_dup(tag_ids[idx], name_id):
+                        min_names[idx] = mn = c.value()
                     else:
-                        self.min_names[idx] = None
+                        min_names[idx] = mn = None
 
-        return min(filter(None, self.min_names), default=None)
+                if mn and (mname is None or mn < mname):
+                    mname = mn
+
+        return mname
 
 
 def split_names(names):

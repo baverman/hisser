@@ -1,12 +1,30 @@
-from hisser import metrics as api
-from hisser.utils import make_key
+import pytest
+
+from hisser import metrics_lmdb, metrics_sqlite
+
+@pytest.fixture(params=['lmdb+native', 'lmdb+fast', 'sqlite'])
+def api(monkeypatch, request):
+    backend = request.param
+    if backend == 'lmdb+native':
+        monkeypatch.setattr(metrics_lmdb, 'FAST', False)
+        m = metrics_lmdb
+    elif backend == 'lmdb+fast':
+        monkeypatch.setattr(metrics_lmdb, 'FAST', True)
+        m = metrics_lmdb
+    elif backend == 'sqlite':
+        m = metrics_sqlite
+
+    yield m
 
 
-def test_simple_find(tmpdir):
+def test_simple_find(api, tmpdir):
     fname = str(tmpdir.join('metrics.db'))
     mi = api.MetricIndex(fname)
 
     mi.add([b'boo', b'foo'])
+
+    result = mi.find_metrics_many(['z*'])
+    assert result == {'z*': []}
 
     result = mi.find_metrics_many(['*'])
     assert result == {'*': [b'boo', b'foo']}
@@ -15,7 +33,7 @@ def test_simple_find(tmpdir):
     assert result == {'b*': [b'boo']}
 
 
-def test_prefix(tmpdir):
+def test_prefix(api, tmpdir):
     fname = str(tmpdir.join('metrics.db'))
     mi = api.MetricIndex(fname)
     mi.add([b'app1.inst1.boo', b'app1.inst1.foo', b'app1.inst2.foo'])
@@ -42,7 +60,7 @@ def test_prefix(tmpdir):
     assert result == [(True, b'app1.inst1.boo'), (True, b'app1.inst1.foo')]
 
 
-def test_tags(tmpdir):
+def test_tags(api, tmpdir):
     fname = str(tmpdir.join('metrics.db'))
     bar = b'bar;dc=prod'
     boo = b'boo;dc=prod'
@@ -64,6 +82,10 @@ def test_tags(tmpdir):
     names = list(mi.iter_names())
     assert names == [
         b'bar;dc=prod', b'boo;dc=prod', b'foo;dc=test;host=alpha']
+
+    # = empty
+    result = mi.match_by_tags([('dc', '=', 'foo')])
+    assert result == []
 
     # = op
     result = mi.match_by_tags([('dc', '=', 'prod')])

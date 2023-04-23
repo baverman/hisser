@@ -1,8 +1,8 @@
 [run]
-omit=hisser/__main__.py,
-     hisser/metrics_old.py,
-     hisser/metrics_lmdb.py,
-     hisser/http.py,
+omit=hisser/__main__.py
+     hisser/metrics_old.py
+     hisser/http.py
      hisser/wsgi.py
      hisser/profile.py
      hisser/current.py
+     hisser/lmdb_scan_build.py
