@@ -43,9 +43,11 @@ def test_simple(tmpdir, mocker):
     t.start()
 
     start = int(time.time())
-    send_tcp([('m1', 10, start)])
-    send_udp([('m2', 10, start)])
-    send_tcp([('m3;tag=value', 10, start)])
+    send_tcp([('m1', 10, start-60)])
+    send_udp([('m2', 10, start-60)])
+    send_tcp([('m1', 10, start+60)])
+    send_udp([('m2', 10, start+60)])
+    send_tcp([('m3;tag=value', 10, start+60)])
     time.sleep(0.1)
     result = cfg.rpc_client.call('fetch', keys=[b'm1', b'm2'])
     assert set(result['result']) == {b'm1', b'm2'}
@@ -54,7 +56,7 @@ def test_simple(tmpdir, mocker):
     assert 'missing' in result['error']
 
     # trigger flush to disk
-    cfg.server.check_buffer(start + 600)
+    cfg.server.check_buffer(start + 900)
 
     while cfg.server.tm.check():
         time.sleep(0.1)
@@ -78,8 +80,8 @@ def test_simple(tmpdir, mocker):
     result = f.auto_complete_values([], 'tag', 'v')
     assert result == ['value']
 
-    result = cfg.reader.fetch([b'm1', b'm0'], start - 60, start + 60)
-    assert_naneq(result[1], [np.nan, 10.0, np.nan])
+    result = cfg.reader.fetch([b'm1', b'm0'], start - 60, start + 61)
+    assert_naneq(result[1], [[np.nan, 10.0]])
 
     r, w = os.pipe()
     os.write(w, bytes([2]))

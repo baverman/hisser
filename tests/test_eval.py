@@ -47,7 +47,8 @@ def test_eval(finder):
         'root.m1': (10, 15), 'root.m2': (20, 25),
         'tagged;t1=v1;t2=v2': (10, 15),
         'tagged;t1=v1;t2=v3': (20, 25)})
-    finder.cfg.storage.new_block(data, 60, 60, 2, new_names)
+    finder.cfg.storage.new_names(new_names)
+    finder.cfg.storage.new_block(data, 60, 60, 2)
 
     ctx = evaluator.make_context(60, 300)
     ds, = evaluator.evaluate_target(ctx, ['root.*'])

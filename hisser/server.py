@@ -168,28 +168,27 @@ class RpcServer:
         self.accepted_requests = 0
 
     async def handler(self, conn):
-        data = []
-        while True:
-            buf = await recv(conn, 16384)
-            if not buf:
-                break
-            data.append(buf)
+        with conn:
+            data = []
+            while True:
+                buf = await recv(conn, 16384)
+                if not buf:
+                    break
+                data.append(buf)
 
-        data = b''.join(data)
+            data = b''.join(data)
 
-        if not data:  # pragma: no cover
-            conn.close()
-            return
+            if not data:  # pragma: no cover
+                return
 
-        try:
-            req = mloads(data)
-            method = req.pop('method')
-            resp = mdumps(getattr(self, 'rpc_{}'.format(method))(**req))
-        except Exception as e:
-            resp = mdumps({'error': str(e)})
+            try:
+                req = mloads(data)
+                method = req.pop('method')
+                resp = mdumps(getattr(self, 'rpc_{}'.format(method))(**req))
+            except Exception as e:
+                resp = mdumps({'error': str(e)})
 
-        await sendall(conn, resp)
-        conn.close()
+            await sendall(conn, resp)
 
     def rpc_fetch(self, keys):
         return self.server.buf.get_data(keys)
@@ -206,6 +205,7 @@ class RpcServer:
         async def server_loop():
             while True:
                 conn, _addr = await accept(listen_sock)
+                conn.setblocking(False)
                 self.accepted_requests += 1
                 loop.spawn(self.handler(conn))
 

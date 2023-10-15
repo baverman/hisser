@@ -1,10 +1,10 @@
 import logging
-from math import isnan
 from time import time
 from resource import getrusage, RUSAGE_SELF, RUSAGE_CHILDREN
 from threading import RLock
 
 import numpy as np
+from hisser import utils
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +18,6 @@ class DataChunk:
         self.new_names = []
         self.name_idx = {}
         self.lock = RLock()
-        self.ts = None
 
     def __len__(self):
         return len(self.name_idx)
@@ -42,7 +41,8 @@ class DataChunk:
     def compact(self, ratio):
         idx = ~np.all(np.isnan(self.data), axis=1)
         non_empty_metrics = np.count_nonzero(idx)
-        if self.name_idx and non_empty_metrics / len(self.name_idx) < ratio / 2:
+        # repeat check because cut block could omit existing metrics
+        if non_empty_metrics > 0 and len(self.name_idx) / non_empty_metrics > ratio:
             log.info('Compact data %d -> %d', len(self.name_idx), non_empty_metrics)
             newdata = self.data[idx]
             newnames = self.names[idx]
@@ -52,81 +52,103 @@ class DataChunk:
                 self.names = newnames
                 self.name_idx = newnameidx
 
-    def cut(self, start, size, ts):
+    def cut_data(self, start, size):
         result = self.data[...,start:start+size]
         idx = ~np.all(np.isnan(result), axis=1)
+        return list(zip(self.names[idx], result[idx]))
 
-        newdata = np.append(
-            self.data[...,size:],
-            np.full((len(self.names), size), np.nan, dtype=np.double),
-            axis=1)
-
-        with self.lock:
+    def cut_new_names(self):
+        if self.new_names:
             newnames = self.new_names[:]
             self.new_names[:] = []
-            self.ts = ts
-            self.data = newdata
+            return newnames
 
-        return list(zip(self.names[idx], result[idx])), newnames
-
-    def get_data(self, keys, ts=None):
+    def trim(self, start, size, modsize):
         with self.lock:
-            ts = self.ts or ts
+            if size >= modsize:
+                self.data[...,:] = np.nan
+            else:
+                for s, e in iter_slices(start, start+size, self.size):
+                    self.data[...,s:e] = np.nan
+                for s, e in iter_slices(start+modsize, start+size+modsize, self.size):
+                    self.data[...,s:e] = np.nan
+
+    def get_data(self, keys, start, size):
+        with self.lock:
             d = self.data
             nidx = self.name_idx
 
         result = {}
         for it in keys:
             try:
-                result[it] = list(d[nidx[it]])
+                result[it] = list(d[nidx[it]][start:start+size])
             except KeyError:
                 pass
-        return ts, result
+        return result
+
+
+def iter_slices(start, end, size):
+    if end > size:
+        yield start, size
+        yield 0, end % size
+    else:
+        yield start, end
 
 
 class Buffer:
-    def __init__(self, size, resolution, flush_size, past_size, max_points,
-                 compact_ratio, now=None):
-        self.size = size
-        self.resolution = resolution
+    def __init__(self, flush_size, resolution, compact_ratio, now=None):
         self.flush_size = flush_size
-        self.past_size = past_size
-        self.max_points = max_points
+        self.size = flush_size * 3
+        self.future_tolerance = flush_size // 2
+        self.reservation = self.flush_size + self.future_tolerance
+        self.resolution = resolution
         self.compact_ratio = compact_ratio
 
-        self.chunk = DataChunk(size+flush_size)
-        self.collected_metrics = 0
+        self.chunk = DataChunk(self.size*2)  # needed for continuous ring buffer
 
-        self.past_points = 0
-        self.future_points = 0
+        self.collected_metrics = 0
         self.received_points = 0
         self.flushed_points = 0
         self.last_size = 0
 
-        self.set_ts(now or time())
+        self.last_flush = utils.norm_res(int(now or time()), self.resolution)
+        self.buf_ts = self.last_flush
+        self.last_trim = self.last_flush
 
-    def get_data(self, keys):
-        ts, result = self.chunk.get_data(keys, self.ts)
-        return {'start': ts - self.flush_size * self.resolution,
+    def get_data(self, keys, now=None):
+        start = int(now or time()) - self.reservation * self.resolution
+        idx = self.bufidx(start)
+        result = self.chunk.get_data(keys, idx, self.reservation)
+        return {'start': start,
                 'result': result,
                 'resolution': self.resolution,
-                'size': self.size + self.flush_size}
+                'size': self.reservation}
 
-    def set_ts(self, ts):
-        self.ts = int(ts) // self.resolution * self.resolution - self.past_size * self.resolution
+    def bufidx(self, ts):
+        return (ts - self.buf_ts) // self.resolution % self.size
+
+    def trim(self, ts):
+        trim_size = (ts - self.last_trim) // self.resolution
+        if trim_size < 1:
+            return
+
+        s = self.bufidx(ts + (self.size - self.reservation - trim_size) * self.resolution)
+        log.debug('TRIM %s: %s - %s', ts, s, trim_size)
+        self.chunk.trim(s, trim_size, self.size)
+        self.last_trim = utils.norm_res(ts, self.resolution)
 
     def flush(self, size):
-        # print(self.flush_size, size)
-        # print(self.chunk.data)
-        ts = self.ts
-        next_ts = ts + self.resolution * size
-        data, newnames = self.chunk.cut(self.flush_size, size, next_ts)
-        self.ts = next_ts
+        ts = self.last_flush
+        self.last_flush += self.resolution * size
+        idx = self.bufidx(ts)
+        log.debug('FLUSH %s: %s - %s', ts, idx, size)
+        data = self.chunk.cut_data(idx, size)
 
         if data:
             self.flushed_points += len(data) * size
-            result = (data, ts, self.resolution, size, newnames)
-            self.chunk.compact(self.compact_ratio)
+            result = (data, ts, self.resolution, size)
+            if len(self.chunk) / len(data) > self.compact_ratio:
+                self.chunk.compact(self.compact_ratio)
         else:
             result = None
 
@@ -136,23 +158,15 @@ class Buffer:
 
     def add(self, ts, name, value):
         self.received_points += 1
-        idx = (int(ts) - self.ts) // self.resolution + self.flush_size
+        idx = self.bufidx(int(ts))
         row = self.chunk.get_row(name)
-        try:
-            oldvalue = row[idx]
-            row[idx] = value
-            self.collected_metrics += isnan(oldvalue)
-        except IndexError:
-            if idx < 0:
-                self.past_points += 1
-            else:
-                self.future_points += 1
+        row[idx] = value
+        row[idx + self.size] = value
+        self.collected_metrics += 1
 
     def add_internal_metrics(self, now):
         self.add(now, b'hisser.flushed-points', self.flushed_points)
         self.add(now, b'hisser.received-points', self.received_points)
-        self.add(now, b'hisser.past-points', self.past_points)
-        self.add(now, b'hisser.future-points', self.future_points)
 
         r_main = getrusage(RUSAGE_SELF)
         self.add(now, b'hisser.cpu.main.user', r_main.ru_utime)
@@ -170,32 +184,20 @@ class Buffer:
 
     def tick(self, force=False, now=None):
         now = int(now or time())
-        size = (now - self.past_size * self.resolution - self.ts) // self.resolution
+        flush_ts = now - self.future_tolerance * self.resolution
+        size = (flush_ts - self.last_flush) // self.resolution
 
-        if size < 0:
-            return None, None
-
+        new_names = None
         if size != self.last_size:
+            self.trim(now)
             self.add_internal_metrics(now)
             self.last_size = size
+            new_names = self.chunk.cut_new_names()
 
-        if force:
-            size = (now - self.ts) // self.resolution
-            print('@@', size, self.size)
-            return self.flush(min(size, self.size)), None
-
-        if size >= self.size:
-            return self.flush(self.size), None
+        if size > 0 and force:
+            return self.flush(min(size, self.size)), new_names
 
         if size >= self.flush_size:
-            return self.flush(self.flush_size), None
+            return self.flush(self.flush_size), new_names
 
-        if size * len(self.chunk) > self.max_points:
-            return self.flush(size), None
-
-        if size > 0 and self.chunk.new_names:
-            new_names = self.chunk.new_names[:]
-            self.chunk.new_names[:] = []
-            return None, new_names
-
-        return None, None
+        return None, new_names

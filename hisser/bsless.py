@@ -29,6 +29,7 @@ class FakeModule(type(sys)):
     def __init__(self, name, **kwargs):
         super().__init__(name)
         vars(self).update(kwargs)
+        self.__file__ = f'__fake__ {name}'
 
     def __getattr__(self, name):
         def inner(*args, **kwargs):  # pragma: no cover

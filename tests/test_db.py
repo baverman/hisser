@@ -125,7 +125,7 @@ def test_storage_read_write(tmpdir):
 
     data = [(b'm1', array.array('d', [1, 2, 3]))]
     storage = db.Storage(data_dir, None, None, None, None, mi)
-    p = storage.new_block(data, 1000, 10, 3, [b'm1'])
+    p = storage.new_block(data, 1000, 10, 3)
     assert read_name_block(p) == [b'm1']
     assert read_name_block(p + 'non-exists') == []
 
@@ -202,10 +202,10 @@ def test_storage_house_work(tmpdir):
     storage = db.Storage(data_dir, retentions, merge_finder, downsample_finder, agg_rules, mi)
     storage.do_housework()
 
-    storage.new_block(data(b'm1', b'm2'), 1000, 10, 5, [])
-    storage.new_block(data(b'm2', b'm3'), 1050, 10, 5, [])
-    storage.new_block(data(b'm3', b'm4'), 1100, 10, 5, [])
-    storage.new_block(data(b'm4', b'm5'), 1150, 10, 5, [])
+    storage.new_block(data(b'm1', b'm2'), 1000, 10, 5)
+    storage.new_block(data(b'm2', b'm3'), 1050, 10, 5)
+    storage.new_block(data(b'm3', b'm4'), 1100, 10, 5)
+    storage.new_block(data(b'm4', b'm5'), 1150, 10, 5)
 
     storage.do_housework(1200)
 

@@ -146,8 +146,7 @@ class Storage:
         self.agg_rules = agg_rules
         self.metric_index = metric_index
 
-    def new_block(self, data, ts, resolution, size, new_names):
-        self.new_names(new_names)
+    def new_block(self, data, ts, resolution, size):
         filtered = data
         data = sorted((make_key(k), v) for k, v in filtered)
         path = new_block(self.data_dir, data, ts, resolution, size, append=True)

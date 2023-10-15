@@ -6,7 +6,7 @@ def test_simple(tmpdir):
     cfg.ensure_dirs()
 
     server = cfg.server
-    server.buf.set_ts(1000)
+    server.buf.ts = 1000
 
     for ts in range(1000, 1700, 60):
         data = 'm1 {0} 10\nm2 {0} 10\n'.format(ts).encode()

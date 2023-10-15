@@ -7,63 +7,62 @@ def fnan(seq):
 
 
 def test_empty_buffer():
-    buf = Buffer(30, 10, 5, 3, 5000, 0.9, now=1000)
+    buf = Buffer(10, 10, 1.5, now=1000)
     result = buf.flush(5)
     assert result is None
 
 
-def test_flush_max_points():
-    buf = Buffer(30, 10, 30, 3, 10, 0.9, now=1000)
-    for i in range(5):
-        buf.add(970, 'm{}'.format(i), 1)
-    for i in range(5):
-        buf.add(980, 'm{}'.format(i), 1)
+def test_compact():
+    buf = Buffer(10, 10, 1.5, now=1000)
+    for i in range(10):
+        buf.add(1000, f'm{i}', 1)
 
-    data, new_names = buf.tick(now=1030)
-    assert data
+    buf.tick(now=1010)
+    buf.tick(now=1310)
 
 
-def test_simple():
-    buf = Buffer(30, 10, 5, 3, 5000, 0.9, now=1000)
-    buf.add(1000, 'm1', 1)
-    buf.add(1010, 'm1', 2)
-    buf.add(1020, 'm1', 3)
-    buf.add(2000, 'm1', 3)
-    buf.add(500, 'm1', 3)
+def norm_result(metric, data, names):
+    mdata = dict(data and data[0] or {}).get(metric)
+    return fnan(mdata) if mdata is not None else None, names and [it for it in names if it == metric]
 
-    result = buf.get_data(['m1', 'm2'])
-    result['result']['m1'] = fnan(result['result']['m1'])
 
-    assert result == {'start': 920,
-                      'result': {'m1': [None] * 8 + [1.0, 2.0, 3.0] + [None]*24},
-                      'resolution': 10,
-                      'size': 35}
+def test_normap_op():
+    buf = Buffer(10, 10, 1.5, now=1000)
+    result = {}
+    value = 1
+    for ts in range(1000, 1260):
+        data, new_names = buf.tick(now=ts)
+        if data or new_names:
+            result[ts] = norm_result('m1', data, new_names)
 
-    data, new_names = buf.tick(now=900)
-    assert data is None
-    assert new_names is None
+        if ts % 10 == 0:
+            buf.add(ts+1, 'm1', value)
+            value += 1
 
-    data, new_names = buf.tick(now=1000)
-    assert data is None
-    assert new_names is None
+    assert result == {
+        1000: (None, []),
+        1010: (None, ['m1']),
+        1150: ([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0], None),
+        1250: ([11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0], None)
+    }
 
-    data, new_names = buf.tick(now=1000)
-    assert data is None
-    assert new_names is None
 
-    data, new_names = buf.tick(now=1010)
-    assert data is None
-    assert 'm1' in new_names
+def test_tick_with_gaps():
+    buf = Buffer(10, 10, 1.5, now=1000)
+    result = {}
+    value = 1
+    ticks = [1200, 1250]
+    for ts in range(1000, 1260):
+        if ts in ticks:
+            data, new_names = buf.tick(now=ts)
+            if data or new_names:
+                result[ts] = norm_result('m1', data, new_names)
 
-    (data, start, res, size, nn), new_names = buf.tick(now=1100)
-    d = dict(data)['m1']
-    assert (start, res, size, nn) == (970, 10, 5, [])
-    assert fnan(d) == [None, None, None, 1.0, 2.0]
+        if ts % 10 == 0:
+            buf.add(ts+1, 'm1', value)
+            value += 1
 
-    (data, start, res, size, nn), new_names = buf.tick(now=1100 + 300)
-    d = dict(data)['m1']
-    assert (start, res, size, nn) == (1020, 10, 30, [])
-    assert fnan(d) == [3.0] + [None] * 29
-
-    data, new_names = buf.tick(force=True, now=1500)
-    assert data is None
+    assert result == {
+        1200: ([None, None, None, None, None, 6.0, 7.0, 8.0, 9.0, 10.0], ['m1']),
+        1250: ([11.0, 12.0, 13.0, 14.0, 15.0, None, None, None, None, None], None),
+    }

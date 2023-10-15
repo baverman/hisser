@@ -25,25 +25,15 @@ AGG_RULE_SUM = r'\.(count|sum)($|;)|sum'
 # Default aggregation if no any rules matched
 AGG_DEFAULT_METHOD = 'avg'
 
-# How much points of each metric to keep in memory.
-# With default minimal resolution of 60s it will be 30 minutes of data.
-BUFFER_SIZE = 30
-
-# How much data can be accepted from the past. 5 * 60s is 5 minutes.
-BUFFER_PAST_SIZE = 5
-
-# Flush buffer on reaching this size. Buffer will be flushed every 10 minutes
+# Number of points to flush. Buffer will be flushed every 10 minutes
 # with default flush size and 60s resolution.
 BUFFER_FLUSH_SIZE = 10
 
-# Flush buffer on reaching points limit. Points are equal to number of metrics in
-# buffer multiplied by current buffer position. For example if your instance
-# receive 100k metrics per minute, then it will be flushed every 5 minutes for default
-# resolution of 60s.
-BUFFER_MAX_POINTS = 500000
+BUFFER_FUTURE_TOLERANCE = 5
 
-# Remove metrics without points from buffer on this ratio threshold.
-BUFFER_COMPACT_RATIO = 0.9
+# Remove metrics without points from buffer on total_metrics/non_empty_metrics
+# ratio threshold.
+BUFFER_COMPACT_RATIO = 1.5
 
 # Maximum size of merged block in points.
 MERGE_MAX_SIZE = 700

@@ -104,7 +104,7 @@ This layout allows to dump data from memory buffer very efficiently (whisper
 needs one io-operation per metric and can kneel a host with several hundreds of
 metrics).
 
-If points in memory exceed ``BUFFER_FLUSH_SIZE`` or ``BUFFER_MAX_POINTS`` it will be
+If points in memory exceed ``BUFFER_FLUSH_SIZE`` it will be
 flushed into separate block::
 
    +----------+----------+----------+
