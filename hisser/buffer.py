@@ -116,7 +116,7 @@ class Buffer:
         self.last_trim = self.last_flush
 
     def get_data(self, keys, now=None):
-        start = int(now or time()) - self.reservation * self.resolution
+        start = utils.norm_res(now or time(), self.resolution) - self.reservation * self.resolution
         idx = self.bufidx(start)
         result = self.chunk.get_data(keys, idx, self.reservation)
         return {'start': start,

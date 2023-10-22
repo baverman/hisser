@@ -117,8 +117,8 @@ size_t lmdb_scan_tags(void* pyobj_cursor, LMDB_scan_state* state, uint8_t *out, 
 
     while (ri < out_count) {
         for(i=loop_start; i < tstate_count; i++) {
-            /* size_t ridx =(i + start) % tstate_count; */
-            LMDB_tags_state* ts = &(state->tag_states[(i + start) % tstate_count]);
+            size_t ridx = (i + start) % tstate_count;
+            LMDB_tags_state* ts = &(state->tag_states[ridx]);
             if (!cname) {
                 cname = next_item(cursor, ts, NULL);
                 /* fprintf(stderr, "@@@ null %li %li %08x\n", start, ridx, id2int(cname)); */
@@ -132,7 +132,7 @@ size_t lmdb_scan_tags(void* pyobj_cursor, LMDB_scan_state* state, uint8_t *out, 
                 if (memcmp(nname, cname, 4) != 0) {
                     memcpy(tmp_cname, nname, 4);
                     cname = tmp_cname;
-                    start = i;
+                    start = ridx;
                     loop_start = 1;
                     break;
                 }

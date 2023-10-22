@@ -47,6 +47,24 @@ def test_normap_op():
     }
 
 
+def test_get_data():
+    buf = Buffer(10, 10, 1.5, now=1000)
+    value = 1
+    for ts in range(1000, 1160):
+        buf.tick(now=ts)
+        if ts % 10 == 0:
+            buf.add(ts+1, 'm1', value)
+            value += 1
+
+    fdata = buf.get_data(['m1'], now=1155)
+    assert fdata == {
+        'start': 1000,
+        'result': {'m1': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0]},
+        'resolution': 10,
+        'size': 15
+    }
+
+
 def test_tick_with_gaps():
     buf = Buffer(10, 10, 1.5, now=1000)
     result = {}

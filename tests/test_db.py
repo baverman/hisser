@@ -156,9 +156,9 @@ def test_new_data_in_buffer(tmpdir):
     class EmptyRpcClient:
         @staticmethod
         def call(cmd, keys):
-            return {'result': {b'm2': [4]},
-                    'start': 1030,
-                    'size': 1,
+            return {'result': {b'm2': [42, 4]},
+                    'start': 1020,
+                    'size': 2,
                     'resolution': 10}
 
     data_dir = str(tmpdir)
@@ -169,7 +169,7 @@ def test_new_data_in_buffer(tmpdir):
     db.new_block(data_dir, data, 1000, 10, 3, append=True)
 
     reader = db.Reader(bl, [(10, 10)], EmptyRpcClient, 10)
-    info, data, names = reader.fetch([b'm1', b'm2'], 500, 1030, now=1040)
+    info, data, names = reader.fetch([b'm1', b'm2'], 500, 1040, now=1040)
     assert info == (1000, 1040, 10)
     assert names == [b'm1', b'm2']
     assert_naneq(data, [[1.0, 2.0, 3.0, np.nan],

@@ -329,7 +329,8 @@ class MetricIndex:
             ii = full
             while True:
                 for i in ii:
-                    c = cursors[(start + i) % cur_count]
+                    idx = (start + i) % cur_count
+                    c = cursors[idx]
 
                     if cname is None:
                         cname = c.next(None)
@@ -341,7 +342,7 @@ class MetricIndex:
                             return name_ids
                         if nname != cname:
                             cname = nname
-                            start = i
+                            start = idx
                             ii = partial
                             break
                 else:
@@ -366,6 +367,8 @@ class MetricIndex:
         result = cache[tag] = self.get_tag_values(tag)
         return result
 
+def to_int(v):
+    return int.from_bytes(v, 'big')
 
 class TagIdCursor:
     def __init__(self, cursor, tag_id):
