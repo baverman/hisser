@@ -15,13 +15,13 @@ RUN apk add python3-dev libffi-dev openssl-dev pcre-dev build-base linux-headers
 ENV GRAPHITE_NO_PREFIX=True \
     PYTHONPATH=/pypkg/lib/python3.10/site-packages
 
-RUN pip install --prefix=/pypkg --no-binary=:all: cffi==1.15.1
+RUN pip install --prefix=/pypkg --use-pep517 --no-binary=:all: cffi==1.15.1
 
 COPY /requirements.txt /
-RUN pip install --prefix=/pypkg -r requirements.txt
+RUN pip install --prefix=/pypkg --use-pep517 -r requirements.txt
 COPY /hisser /pkg/hisser/
 COPY README.rst LICENSE setup.py /pkg/
-RUN pip install --prefix=/pypkg /pkg
+RUN pip install --use-pep517 --prefix=/pypkg /pkg
 
 
 # Final image

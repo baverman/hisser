@@ -8,7 +8,7 @@ ffibuilder.cdef(open(os.path.join(src_dir, "lmdb_scan", "lmdb_scan.h")).read())
 ffibuilder.set_source("hisser.lmdb_scan._cffi",
 """
 #include "lmdb_scan.c"
-""")
+""", include_dirs=[os.path.join(src_dir, "lmdb_scan")])
 
 if __name__ == "__main__":
     ffibuilder.compile(verbose=True)
