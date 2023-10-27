@@ -21,6 +21,16 @@ class Name:
         return parse_tags(self.name)[1]
 
     @cached_property
+    def parts(self):
+        return self.name.partition(';')[0].split('.')
+
+    @cached_property
+    def placeholders(self):
+        result = {str(i): it for i, it in enumerate(self.parts)}
+        result.update(self.tags)
+        return result
+
+    @cached_property
     def norm(self):
         t = ';'.join('{}={}'.format(*it) for it in self.tags.items() if it[0] != 'name')
         return self.name.partition(';')[0] + (';' + t if t else '')

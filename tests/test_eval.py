@@ -121,4 +121,4 @@ def test_alias():
     assert result.names == [('val: bar 10;foo=10', 0), ('val: bar 20;foo=20', 1)]
 
     result = func.alias(ds, 'val: {1} {zoo}')
-    assert result.names == [('val: {1} {zoo};foo=10', 0), ('val: {1} {zoo};foo=20', 1)]
+    assert result.names == [('val: bar {zoo};foo=10', 0), ('val: bar {zoo};foo=20', 1)]

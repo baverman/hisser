@@ -122,6 +122,9 @@ def consolidateBy(ds, func):
     return clone(ds, consolidate=func)  # pragma: no cover
 
 
+TPL_RE = re.compile(r'\{(.+?)\}')
+
+
 @func()
 def alias(ds, template):
     """
@@ -133,13 +136,15 @@ def alias(ds, template):
       &target=alias(Sales.widgets.largeBlue, "Large Blue Widgets {tag} {0}")
     """
 
+    def replace(m):
+        result = it.placeholders.get(m.group(1))
+        if result is None:
+            return m.group(0)
+        return result
+
     newnames = []
     for it, i in ds.names:
-        parts = it.name.partition(';')[0].split('.')
-        try:
-            name = Name(template.format(*parts, **it.tags), it.tags)
-        except:
-            name = Name(template, it.tags)
+        name = Name(TPL_RE.sub(replace, template), it.tags)
         newnames.append((name, i))
 
     return clone(ds, names=newnames)
@@ -158,7 +163,7 @@ def offset(ds, value):
 @func()
 def exclude(ds, pattern):
     regex = re.compile(pattern)
-    newnames = [it for it in ds.names if regex.search(it[0].name)]
+    newnames = [it for it in ds.names if not regex.search(it[0].name)]
     return clone(ds, names=newnames)
 
 
