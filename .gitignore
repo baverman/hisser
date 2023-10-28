@@ -19,4 +19,5 @@
 /*.ini
 /TODO
 /hisser/*.html
+_cffi.c
 ringbuffer.py

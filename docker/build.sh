@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-hisser_version=${1:-0.21.dev5}
+hisser_version=${1:-0.21.dev7}
 name=${2:-baverman/graphite-hisser}
 tag=${3:-$hisser_version-1}
 

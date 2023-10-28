@@ -9,6 +9,7 @@ from math import isnan
 from time import time
 from itertools import islice, groupby
 
+from . import profile
 from .blocks import Block, BlockList, notify_blocks_changed, get_info
 from .pack import pack, unpack, unpack_into
 from .utils import (estimate_data_size, NAN, safe_unlink,
@@ -107,9 +108,10 @@ class Reader:
             return (start, stop, res), result, names
 
         try:
-            cur_data = self.rpc_client.call('fetch', keys=keys)
+            with profile.slowlog(0.05, log.debug, 'SLOW RPC FETCH CALL: %s keys', len(keys)):
+                cur_data = self.rpc_client.call('fetch', keys=keys)
         except Exception:
-            log.exception('Error getting data')
+            log.exception('Error getting data for %s keys', len(keys))
             return (start, stop, res), result, names
 
         cur_result = cur_data['result']

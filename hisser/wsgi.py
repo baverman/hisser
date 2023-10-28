@@ -10,8 +10,7 @@ from graphite.storage import STORE
 from graphite.metrics.views import tree_json
 
 from hisser.http import Application, Response, params
-from hisser import evaluator, current, utils
-from hisser.profile import profile_func
+from hisser import evaluator, current, utils, profile
 
 app = application = Application()
 slow_log = logging.getLogger('hisser.slowlog')
@@ -43,22 +42,16 @@ def parse_date(value):
     end=item(parse_date, src='until'),
     max_points=opt(int, src='maxDataPoints'),
 )
-@profile_func
+@profile.profile_func
 def render(_req, targets, start, end, max_points):
-    # print(_req.body)
     if max_points == 0: max_points = None
     ctx = evaluator.make_context(start, end, max_points=max_points)
     data = ctx['data']
 
-    dstart = time.perf_counter()
-
-    data.extend(evaluator.evaluate_target(ctx, targets))
-    series_data = evaluator.filter_data(data, max_points)
-
-    duration = time.perf_counter() - dstart
-    if duration > current.config.SLOW_LOG:
-        slow_log.warn('Slow query: %dms %r %r %r %d', round(duration * 1000),
-                     targets, start, end, max_points)
+    with profile.slowlog(current.config.SLOW_LOG, slow_log.warn,
+                         'Slow query: %r %r %r %d', targets, start, end, max_points):
+        data.extend(evaluator.evaluate_target(ctx, targets))
+        series_data = evaluator.filter_data(data, max_points)
 
     return series_data
 

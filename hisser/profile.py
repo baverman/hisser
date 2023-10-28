@@ -78,6 +78,31 @@ def fmt(d):
     return '{:.3g}{}'.format(d, scales[i])
 
 
+class PState:
+    def __init__(self):
+        self.data = {}
+
+    @contextmanager
+    def __call__(self, name):
+        start = perf_counter()
+        yield
+        duration = perf_counter() - start
+        self.data[name] = self.data.get(name, 0) + duration
+
+    def __str__(self):
+        return ', '.join(f'{k} {fmt(v)}' for k, v in sorted(self.data.items(), key=(lambda r: r[1]), reverse=True))
+
+
+@contextmanager
+def slowlog(threshold, logfn, message, *args):
+    start = perf_counter()
+    ps = PState()
+    yield ps
+    duration = perf_counter() - start
+    if duration > threshold:
+        logfn(message + ': total %s, %s', *args, fmt(duration), ps)
+
+
 def print_state(state, level=0):
     for name, children in state:
         cnt, r, c = _vals[name]

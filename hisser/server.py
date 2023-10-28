@@ -8,7 +8,7 @@ import threading
 from nanoio import spawn, Loop, recv, accept, wait_io, WAIT_READ, sendall, sleep
 
 from .utils import mloads, mdumps
-from . import tasks
+from . import tasks, profile
 
 log = logging.getLogger(__name__)
 
@@ -168,27 +168,31 @@ class RpcServer:
         self.accepted_requests = 0
 
     async def handler(self, conn):
-        with conn:
-            data = []
-            while True:
-                buf = await recv(conn, 16384)
-                if not buf:
-                    break
-                data.append(buf)
+        with profile.slowlog(0.05, log.debug, 'SLOW RPC HANDLER') as ps:
+            with conn:
+                with ps('read'):
+                    data = []
+                    while True:
+                        buf = await recv(conn, 16384)
+                        if not buf:
+                            break
+                        data.append(buf)
 
-            data = b''.join(data)
+                    data = b''.join(data)
 
-            if not data:  # pragma: no cover
-                return
+                if not data:  # pragma: no cover
+                    return
 
-            try:
-                req = mloads(data)
-                method = req.pop('method')
-                resp = mdumps(getattr(self, 'rpc_{}'.format(method))(**req))
-            except Exception as e:
-                resp = mdumps({'error': str(e)})
+                with ps('call'):
+                    try:
+                        req = mloads(data)
+                        method = req.pop('method')
+                        resp = mdumps(getattr(self, 'rpc_{}'.format(method))(**req))
+                    except Exception as e:
+                        resp = mdumps({'error': str(e)})
 
-            await sendall(conn, resp)
+                with ps('send'):
+                    await sendall(conn, resp)
 
     def rpc_fetch(self, keys):
         return self.server.buf.get_data(keys)

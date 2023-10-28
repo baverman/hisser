@@ -28,7 +28,10 @@ setup(
     install_requires=['msgpack', 'click', 'lmdb', 'xxhash', 'covador', 'nanoio', 'numpy'],
     ext_modules=extensions,
     setup_requires=["cffi==1.15.1"],
-    cffi_modules=["hisser/lmdb_scan_build.py:ffibuilder"],
+    cffi_modules=[
+        "hisser/lmdb_scan/build.py:ffibuilder",
+        "hisser/hashtrie/build.py:ffibuilder",
+    ],
     entry_points={
         'console_scripts': ['hisser = hisser.__main__:cli']
     },
