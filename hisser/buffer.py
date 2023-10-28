@@ -184,8 +184,8 @@ class Buffer:
 
     def tick(self, force=False, now=None):
         now = int(now or time())
-        flush_ts = now - self.future_tolerance * self.resolution
-        size = (flush_ts - self.last_flush) // self.resolution
+        now_size = (now - self.last_flush) // self.resolution
+        size = now_size - self.future_tolerance
 
         new_names = None
         if size != self.last_size:
@@ -194,8 +194,8 @@ class Buffer:
             self.last_size = size
             new_names = self.chunk.cut_new_names()
 
-        if size > 0 and force:
-            return self.flush(min(size, self.size)), new_names
+        if force and now_size > 0:
+            return self.flush(min(now_size, self.reservation)), new_names
 
         if size >= self.flush_size:
             return self.flush(self.flush_size), new_names
